@@ -1,6 +1,6 @@
 {
-  "publisher": "vscode-style-to-css",
-  "name": "vscode-jsx-style-to-css",
+  "publisher": "vscode-style-to-css-module",
+  "name": "vscode-jsx-style-to-css-module",
   "displayName": "JSX Style to CSS Module",
   "version": "0.0.1",
   "private": true,
