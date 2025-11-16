@@ -1,9 +1,10 @@
 import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { defineExtension, useCommand } from 'reactive-vscode'
+import * as vscode from 'vscode'
 import { window, workspace, WorkspaceEdit } from 'vscode'
-import { generateUniqueClassName, parseStyleObject, stylesToCSS } from './utils/style-helpers'
-import { getStyleInfoAtPosition } from './utils/vscode-parser'
+import { generateUniqueClassName, stylesToCSS } from './utils/style-helpers'
+import { transformJsxStyleToClassName } from './utils/ast-transformer'
 
 const { activate, deactivate } = defineExtension(() => {
   // Helper to get configuration values
@@ -21,16 +22,9 @@ const { activate, deactivate } = defineExtension(() => {
     const document = editor.document
     const position = editor.selection.active
 
-    // Use VSCode's language service to get style information
-    const styleInfo = await getStyleInfoAtPosition(document, position)
-
-    if (!styleInfo) {
-      window.showErrorMessage('No inline style found at cursor position')
-      return
-    }
-
-    const { elementName, styleValue, styleRange } = styleInfo
-    const styles = parseStyleObject(styleValue)
+    // Get configuration
+    const classAttribute = getConfig<'className' | 'class'>('classAttribute') || 'className'
+    const cssPropertyNaming = getConfig<'kebab-case' | 'camelCase'>('cssPropertyNaming') || 'kebab-case'
 
     // Get file paths
     const filePath = document.fileName
@@ -44,63 +38,79 @@ const { activate, deactivate } = defineExtension(() => {
       cssContent = fs.readFileSync(cssModulePath, 'utf8')
     }
 
-    // Prompt for class name
+    // Prompt for class name (we need this before transformation)
     let className = await window.showInputBox({
       prompt: 'Enter class name (press Enter for random name)',
       placeHolder: 'my-class',
     })
 
     if (!className) {
-      // Generate unique class name
-      className = generateUniqueClassName(cssContent, elementName)
-      if (!className) {
-        window.showErrorMessage('Could not generate unique class name after 100 attempts')
-        return
+      // We need element name for random generation, so let's get a temp one
+      className = 'temp-class'
+    }
+
+    // Transform the AST
+    const transformResult = transformJsxStyleToClassName(document, position, className, classAttribute)
+
+    if (!transformResult) {
+      window.showErrorMessage('No inline style found at cursor position')
+      return
+    }
+
+    // If we used temp class name, generate a proper one now
+    if (className === 'temp-class') {
+      className = generateUniqueClassName(cssContent, transformResult.elementName)
+      
+      // Re-transform with the correct class name
+      const finalTransformResult = transformJsxStyleToClassName(document, position, className, classAttribute)
+      if (finalTransformResult) {
+        transformResult.transformedCode = finalTransformResult.transformedCode
+        transformResult.className = className
       }
     }
+
+    // Convert extracted styles to CSS
+    const styleProperties: { [key: string]: string } = {}
+    transformResult.extractedStyles.forEach(style => {
+      styleProperties[style.name] = style.value
+    })
 
     // Ensure CSS content ends with newline
     if (cssContent && !cssContent.endsWith('\n')) {
       cssContent += '\n'
     }
 
-    const cssPropertyNaming =
-      getConfig<'kebab-case' | 'camelCase'>('cssPropertyNaming') || 'kebab-case'
-    cssContent += `.${className} {\n${stylesToCSS(styles, cssPropertyNaming)}\n}\n`
+    // Add the new CSS class
+    cssContent += `.${className} {\n${stylesToCSS(styleProperties, cssPropertyNaming)}\n}\n`
     fs.writeFileSync(cssModulePath, cssContent)
 
-    // Prepare edits
+    // Prepare edits to replace the entire document
     const edit = new WorkspaceEdit()
 
     // Check if CSS module is already imported
     const documentText = document.getText()
-    const importRegex = /import\s+(\w+)\s+from\s+['"]\.\/[^'"]+\.module\.css['"]/
-    const existingImport = documentText.match(importRegex)
+    let transformedCode = transformResult.transformedCode
 
-    let stylesVarName = 'styles'
-    if (existingImport) {
-      stylesVarName = existingImport[1]
-    } else {
-      // Add import at the top of the file
-      const firstLine = document.lineAt(0)
+    // Add import if it doesn't exist
+    if (!documentText.includes(`./${fileBaseName}.module.css`)) {
       const importStatement = `import styles from './${fileBaseName}.module.css'\n`
-      edit.insert(document.uri, firstLine.range.start, importStatement)
+      transformedCode = importStatement + transformedCode
     }
 
-    // Style range is already provided by the parser
-
-    const classAttribute = getConfig<'className' | 'class'>('classAttribute') || 'className'
-    console.log('Config - classAttribute:', classAttribute)
-    console.log('Config - cssPropertyNaming:', cssPropertyNaming)
-
-    edit.replace(document.uri, styleRange, `${classAttribute}={${stylesVarName}['${className}']}`)
+    // Replace the entire document with transformed code
+    const fullRange = new vscode.Range(
+      document.positionAt(0),
+      document.positionAt(documentText.length)
+    )
+    
+    edit.replace(document.uri, fullRange, transformedCode)
 
     // Apply edits
     await workspace.applyEdit(edit)
 
     window.showInformationMessage(`Styles extracted to ${className} in ${fileBaseName}.module.css`)
 
-    // Also save the document to apply the edits
+    // Save the document
     await document.save()
   })
 })
