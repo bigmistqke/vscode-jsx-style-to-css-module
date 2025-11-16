@@ -37,11 +37,34 @@ export function stylesToCSS(styles: StyleObject, propertyNaming: 'kebab-case' | 
     .join('\n')
 }
 
-export function generateRandomClassName(): string {
-  const chars = 'abcdefghijklmnopqrstuvwxyz'
-  let result = ''
-  for (let i = 0; i < 8; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length))
+export function generateRandomClassName(tagName?: string): string {
+  const randomNum = Math.floor(Math.random() * 1000)
+  const baseTag = tagName || 'element'
+  return `${baseTag}-${randomNum}`
+}
+
+export function classExistsInCSS(cssContent: string, className: string): boolean {
+  // Check if the class name exists as a CSS selector
+  const classRegex = new RegExp(`\\.${className}\\s*\\{`, 'g')
+  return classRegex.test(cssContent)
+}
+
+export function generateUniqueClassName(
+  cssContent: string, 
+  tagName?: string, 
+  maxRetries: number = 100
+): string | null {
+  let attempts = 0
+  let className = generateRandomClassName(tagName)
+  
+  while (classExistsInCSS(cssContent, className) && attempts < maxRetries) {
+    className = generateRandomClassName(tagName)
+    attempts++
   }
-  return `style-${result}`
+  
+  if (attempts >= maxRetries) {
+    return null
+  }
+  
+  return className
 }

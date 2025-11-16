@@ -2,7 +2,7 @@ import * as fs from 'node:fs'
 import * as path from 'node:path'
 import { defineExtension, useCommand } from 'reactive-vscode'
 import { Range, window, workspace, WorkspaceEdit } from 'vscode'
-import { generateRandomClassName, parseStyleObject, stylesToCSS } from './utils/style-helpers'
+import { generateUniqueClassName, parseStyleObject, stylesToCSS } from './utils/style-helpers'
 
 const { activate, deactivate } = defineExtension(() => {
   // Helper to get configuration values
@@ -61,6 +61,10 @@ const { activate, deactivate } = defineExtension(() => {
     // Extract opening tag content
     const openingTag = documentText.substring(openTagStart, openTagEnd + 1)
     
+    // Extract tag name from opening tag
+    const tagNameMatch = openingTag.match(/<(\w+)/)
+    const tagName = tagNameMatch ? tagNameMatch[1] : 'element'
+    
     // Find style prop in opening tag
     const styleMatch = openingTag.match(/style\s*=\s*\{\s*\{([^}]+)\}\s*\}/)
     if (!styleMatch) {
@@ -71,25 +75,36 @@ const { activate, deactivate } = defineExtension(() => {
     const styleContent = styleMatch[1]
     const styles = parseStyleObject(styleContent)
     
-    // Prompt for class name
-    const className = await window.showInputBox({
-      prompt: 'Enter class name (press Enter for random name)',
-      placeHolder: 'my-class',
-    }) || generateRandomClassName()
-    
     // Get file paths
     const filePath = document.fileName
     const fileDir = path.dirname(filePath)
     const fileBaseName = path.basename(filePath, path.extname(filePath))
     const cssModulePath = path.join(fileDir, `${fileBaseName}.module.css`)
     
-    // Create or update CSS module file
+    // Read existing CSS content
     let cssContent = ''
     if (fs.existsSync(cssModulePath)) {
       cssContent = fs.readFileSync(cssModulePath, 'utf8')
-      if (!cssContent.endsWith('\n')) {
-        cssContent += '\n'
+    }
+    
+    // Prompt for class name
+    let className = await window.showInputBox({
+      prompt: 'Enter class name (press Enter for random name)',
+      placeHolder: 'my-class',
+    })
+    
+    if (!className) {
+      // Generate unique class name
+      className = generateUniqueClassName(cssContent, tagName)
+      if (!className) {
+        window.showErrorMessage('Could not generate unique class name after 100 attempts')
+        return
       }
+    }
+    
+    // Ensure CSS content ends with newline
+    if (cssContent && !cssContent.endsWith('\n')) {
+      cssContent += '\n'
     }
     
     const cssPropertyNaming = getConfig<'kebab-case' | 'camelCase'>('cssPropertyNaming') || 'kebab-case'

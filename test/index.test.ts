@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import {
   camelToKebab,
+  classExistsInCSS,
   generateRandomClassName,
+  generateUniqueClassName,
   parseStyleObject,
   stylesToCSS,
 } from '../src/utils/style-helpers'
@@ -165,29 +167,101 @@ describe('style-helpers', () => {
   })
 
   describe('generateRandomClassName', () => {
-    it('should generate class name with correct prefix', () => {
+    it('should generate class name with default element prefix when no tag provided', () => {
       const className = generateRandomClassName()
-      expect(className).toMatch(/^style-[a-z]{8}$/)
+      expect(className).toMatch(/^element-\d{1,3}$/)
+    })
+
+    it('should generate class name with tag name prefix when provided', () => {
+      const className = generateRandomClassName('div')
+      expect(className).toMatch(/^div-\d{1,3}$/)
+      
+      const buttonClass = generateRandomClassName('button')
+      expect(buttonClass).toMatch(/^button-\d{1,3}$/)
+      
+      const h1Class = generateRandomClassName('h1')
+      expect(h1Class).toMatch(/^h1-\d{1,3}$/)
     })
 
     it('should generate unique class names', () => {
       const classNames = new Set()
-      // Generate 100 class names and check they're all unique
-      for (let i = 0; i < 100; i++) {
-        classNames.add(generateRandomClassName())
+      // Generate 50 class names and check most are unique (allowing for some collisions with 0-999)
+      for (let i = 0; i < 50; i++) {
+        classNames.add(generateRandomClassName('div'))
       }
-      expect(classNames.size).toBe(100)
+      expect(classNames.size).toBeGreaterThan(40)
     })
 
-    it('should only use lowercase letters', () => {
-      const className = generateRandomClassName()
-      const suffix = className.replace('style-', '')
-      expect(suffix).toMatch(/^[a-z]+$/)
+    it('should generate numbers between 0 and 999', () => {
+      for (let i = 0; i < 20; i++) {
+        const className = generateRandomClassName('test')
+        const num = parseInt(className.replace('test-', ''))
+        expect(num).toBeGreaterThanOrEqual(0)
+        expect(num).toBeLessThan(1000)
+      }
+    })
+  })
+
+  describe('classExistsInCSS', () => {
+    it('should detect existing class in CSS', () => {
+      const css = `.button-123 { color: red; }\n.div-456 { margin: 10px; }`
+      expect(classExistsInCSS(css, 'button-123')).toBe(true)
+      expect(classExistsInCSS(css, 'div-456')).toBe(true)
+      expect(classExistsInCSS(css, 'span-789')).toBe(false)
     })
 
-    it('should always have length of 14 characters', () => {
-      const className = generateRandomClassName()
-      expect(className.length).toBe(14) // 'style-' (6) + 8 random chars
+    it('should handle CSS with different formatting', () => {
+      const css = `.button-123{color:red;}.div-456  {  margin: 10px;  }`
+      expect(classExistsInCSS(css, 'button-123')).toBe(true)
+      expect(classExistsInCSS(css, 'div-456')).toBe(true)
+    })
+
+    it('should not match partial class names', () => {
+      const css = `.button-123 { color: red; }`
+      expect(classExistsInCSS(css, 'button')).toBe(false)
+      expect(classExistsInCSS(css, '123')).toBe(false)
+    })
+  })
+
+  describe('generateUniqueClassName', () => {
+    it('should generate unique class name when no conflicts', () => {
+      const css = ''
+      const className = generateUniqueClassName(css, 'div')
+      expect(className).toMatch(/^div-\d{1,3}$/)
+    })
+
+    it('should generate new name when conflicts exist', () => {
+      // Mock CSS with some existing classes
+      const css = `.div-100 { color: red; }\n.div-200 { margin: 10px; }`
+      
+      // Generate multiple class names to ensure we don't get conflicts
+      const classNames = new Set()
+      for (let i = 0; i < 10; i++) {
+        const className = generateUniqueClassName(css, 'div')
+        expect(className).not.toBe('div-100')
+        expect(className).not.toBe('div-200')
+        classNames.add(className)
+      }
+      
+      // Check they're all unique
+      expect(classNames.size).toBe(10)
+    })
+
+    it('should return null after max retries', () => {
+      // Create CSS with all possible class names (0-999)
+      let css = ''
+      for (let i = 0; i < 1000; i++) {
+        css += `.test-${i} { color: red; }\n`
+      }
+      
+      const className = generateUniqueClassName(css, 'test', 10)
+      expect(className).toBe(null)
+    })
+
+    it('should use default element prefix when no tag provided', () => {
+      const css = ''
+      const className = generateUniqueClassName(css)
+      expect(className).toMatch(/^element-\d{1,3}$/)
     })
   })
 })
