@@ -80,6 +80,8 @@ const { activate, deactivate } = defineExtension(() => {
     const styleRange = new Range(styleStartPos, styleEndPos)
 
     const classAttribute = getConfig<'className' | 'class'>('classAttribute') || 'className'
+    console.log('Config - classAttribute:', classAttribute)
+    console.log('Config - cssPropertyNaming:', cssPropertyNaming)
     edit.replace(document.uri, styleRange, `${classAttribute}={${stylesVarName}['${className}']}`)
 
     // Apply edits
