@@ -27,6 +27,17 @@ export interface TransformInput {
 }
 
 /**
+ * Check if a string is a valid JavaScript identifier that can be used with dot notation
+ */
+function isValidIdentifier(str: string): boolean {
+  // 1. Only alphanumeric characters
+  // 2. Not start with a number
+  const identifierRegex = /^[a-zA-Z][a-zA-Z0-9]*$/
+  
+  return identifierRegex.test(str)
+}
+
+/**
  * Transform JSX by replacing style prop with className prop and extracting styles
  */
 export function transformJsxStyleToClassName(input: TransformInput): TransformResult | null {
@@ -63,7 +74,9 @@ export function transformJsxStyleToClassName(input: TransformInput): TransformRe
     // Transform the element
     if (staticStyles.length > 0) {
       // Add className/class attribute
-      const classNameValue = `styles["${className}"]`
+      const classNameValue = isValidIdentifier(className) 
+        ? `styles.${className}` 
+        : `styles["${className}"]`
 
       // Check if className/class attribute already exists
       const existingClassAttr = openingElement.getAttribute(classAttribute) as
