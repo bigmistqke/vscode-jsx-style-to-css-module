@@ -4,10 +4,8 @@ import { defineExtension, useCommand } from 'reactive-vscode'
 import * as vscode from 'vscode'
 import { window, workspace, WorkspaceEdit } from 'vscode'
 import { generateUniqueClassName, stylesToCSS } from './utils/style-helpers'
-import {
-  createSourceFile,
-  transformJsxStyleToClassName,
-} from './utils/transform-jsx-style-to-class-name'
+import { createSourceFile } from '../src/utils/create-default-source-file'
+import { transformJsxStyleToClassName } from './utils/transform-jsx-style-to-class-name'
 import { getJsxElementNameAtPosition } from './utils/get-jsx-element-name-at-position'
 
 const { activate, deactivate } = defineExtension(() => {

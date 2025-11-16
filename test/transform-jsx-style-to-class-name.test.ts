@@ -1,5 +1,5 @@
-import { createDefaultSourceFile } from '../src/utils/create-default-source-file'
 import { describe, expect, it } from 'vitest'
+import { createSourceFile } from '../src/utils/create-default-source-file'
 import {
   transformJsxStyleToClassName,
   type TransformInput,
@@ -22,7 +22,7 @@ const Component = () => {
 
 export default Component
 `
-      const sourceFile = createDefaultSourceFile(fileName, fileContent)
+      const sourceFile = createSourceFile(fileName, fileContent)
       const input: TransformInput = {
         sourceFile,
         offset: 100, // position within the div
@@ -53,7 +53,7 @@ const Component = () => {
 
 export default Component
 `
-      const sourceFile = createDefaultSourceFile(fileName, fileContent)
+      const sourceFile = createSourceFile(fileName, fileContent)
       const input: TransformInput = {
         sourceFile,
         offset: 80, // position within the input
@@ -94,7 +94,7 @@ const Component = () => {
 
 export default Component
 `
-      const sourceFile = createDefaultSourceFile(fileName, fileContent)
+      const sourceFile = createSourceFile(fileName, fileContent)
       const input: TransformInput = {
         sourceFile,
         offset: 200, // position within the div
@@ -137,7 +137,7 @@ const Component = () => {
 
 export default Component
 `
-      const sourceFile = createDefaultSourceFile(fileName, fileContent)
+      const sourceFile = createSourceFile(fileName, fileContent)
       const input: TransformInput = {
         sourceFile,
         offset: 150, // position within the div
@@ -172,7 +172,7 @@ const TestComponent: Component = () => {
 
 export default TestComponent
 `
-      const sourceFile = createDefaultSourceFile(fileName, fileContent)
+      const sourceFile = createSourceFile(fileName, fileContent)
       const input: TransformInput = {
         sourceFile,
         offset: 120, // position within the div
@@ -210,7 +210,7 @@ const Component = () => {
 
 export default Component
 `
-      const sourceFile = createDefaultSourceFile(fileName, fileContent)
+      const sourceFile = createSourceFile(fileName, fileContent)
       const input: TransformInput = {
         sourceFile,
         offset: 150, // position within the div
@@ -245,7 +245,7 @@ const Component = () => {
 
 export default Component
 `
-      const sourceFile = createDefaultSourceFile(fileName, fileContent)
+      const sourceFile = createSourceFile(fileName, fileContent)
       const input: TransformInput = {
         sourceFile,
         offset: 100, // position within the div
@@ -283,7 +283,7 @@ const Component = () => {
 
 export default Component
 `
-      const sourceFile = createDefaultSourceFile(fileName, fileContent)
+      const sourceFile = createSourceFile(fileName, fileContent)
       const input: TransformInput = {
         sourceFile,
         offset: 100, // position within the div
@@ -318,7 +318,7 @@ const Component = () => {
 
 export default Component
 `
-      const sourceFile = createDefaultSourceFile(fileName, fileContent)
+      const sourceFile = createSourceFile(fileName, fileContent)
       const input: TransformInput = {
         sourceFile,
         offset: 100, // position within the div
@@ -341,7 +341,7 @@ import React from 'react'
 // Just a comment, no JSX here
 const x = 5
 `
-      const sourceFile = createDefaultSourceFile(fileName, fileContent)
+      const sourceFile = createSourceFile(fileName, fileContent)
       const input: TransformInput = {
         sourceFile,
         offset: 50, // position in comment
@@ -364,7 +364,7 @@ const Component = () => {
 
 export default Component
 `
-      const sourceFile = createDefaultSourceFile(fileName, fileContent)
+      const sourceFile = createSourceFile(fileName, fileContent)
       const input: TransformInput = {
         sourceFile,
         offset: 80, // position within the div
@@ -392,7 +392,7 @@ const Component = () => {
 
 export default Component
 `
-      const sourceFile = createDefaultSourceFile(fileName, fileContent)
+      const sourceFile = createSourceFile(fileName, fileContent)
       const input: TransformInput = {
         sourceFile,
         offset: 100, // position within first div
@@ -414,7 +414,7 @@ const Component = () => {
 
 export default Component
 `
-      const sourceFile = createDefaultSourceFile(fileName, fileContent)
+      const sourceFile = createSourceFile(fileName, fileContent)
       const input: TransformInput = {
         sourceFile,
         offset: 50, // position within the div
@@ -447,7 +447,7 @@ const Component = () => {
 
 export default Component
 `
-      const sourceFile = createDefaultSourceFile(fileName, fileContent)
+      const sourceFile = createSourceFile(fileName, fileContent)
       const input: TransformInput = {
         sourceFile,
         offset: 150, // position within the div
@@ -474,7 +474,7 @@ const Component = () => {
 
 export default Component
 `
-      const sourceFile = createDefaultSourceFile(fileName, fileContent)
+      const sourceFile = createSourceFile(fileName, fileContent)
       const input: TransformInput = {
         sourceFile,
         offset: 80, // position within the div

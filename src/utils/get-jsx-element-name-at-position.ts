@@ -1,44 +1,28 @@
-import * as ts from 'typescript'
+import { Node, SourceFile, SyntaxKind } from 'ts-morph'
 
 /**
  * Get the JSX element tag name at a specific position
  */
-export function getJsxElementNameAtPosition(
-  sourceFile: ts.SourceFile,
-  offset: number,
-): string | null {
+export function getJsxElementNameAtPosition(sourceFile: SourceFile, offset: number): string | null {
   try {
-    const element = findAnyJsxElementAtPosition(sourceFile, offset)
-    if (!element) {
-      return null
-    }
-
-    const tagName = ts.isJsxElement(element) ? element.openingElement.tagName : element.tagName
-
-    return ts.isIdentifier(tagName) ? tagName.text : tagName.getText()
+    const node = sourceFile.getDescendantAtPos(offset)
+    if (!node) return null
+    
+    // Find any JSX element (with or without style)
+    const jsxElement = node.getFirstAncestorByKind(SyntaxKind.JsxElement) 
+      ?? node.getFirstAncestorByKind(SyntaxKind.JsxSelfClosingElement)
+      ?? (Node.isJsxElement(node) || Node.isJsxSelfClosingElement(node) ? node : null)
+    
+    if (!jsxElement) return null
+    
+    // Get the opening element
+    const openingElement = jsxElement.getKind() === SyntaxKind.JsxElement
+      ? jsxElement.asKindOrThrow(SyntaxKind.JsxElement).getOpeningElement()
+      : jsxElement.asKindOrThrow(SyntaxKind.JsxSelfClosingElement)
+    
+    return openingElement.getTagNameNode().getText()
   } catch (error) {
     console.error('Error getting JSX element name:', error)
     return null
   }
-}
-
-function findAnyJsxElementAtPosition(
-  sourceFile: ts.SourceFile,
-  position: number,
-): ts.JsxElement | ts.JsxSelfClosingElement | null {
-  function visit(node: ts.Node): ts.JsxElement | ts.JsxSelfClosingElement | null {
-    if (position >= node.getFullStart() && position < node.getEnd()) {
-      // Check if this node is any JSX element
-      if (ts.isJsxElement(node) || ts.isJsxSelfClosingElement(node)) {
-        return node
-      }
-
-      // Continue searching in children
-      const childResult = ts.forEachChild(node, visit)
-      if (childResult) return childResult
-    }
-    return null
-  }
-
-  return visit(sourceFile)
 }
