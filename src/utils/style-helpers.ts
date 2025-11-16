@@ -53,7 +53,7 @@ export function generateUniqueClassName(
   cssContent: string, 
   tagName?: string, 
   maxRetries: number = 100
-): string | null {
+) {
   let attempts = 0
   let className = generateRandomClassName(tagName)
   
@@ -63,7 +63,7 @@ export function generateUniqueClassName(
   }
   
   if (attempts >= maxRetries) {
-    return null
+    throw new Error('Max retries generating unique class name')
   }
   
   return className
