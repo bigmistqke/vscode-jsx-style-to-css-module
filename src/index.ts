@@ -7,6 +7,7 @@ import { generateUniqueClassName, stylesToCSS } from './utils/style-helpers'
 import { createDefaultSourceFile } from '../src/utils/create-default-source-file'
 import { transformJsxStyleToClassName } from './utils/transform-jsx-style-to-class-name'
 import { getJsxElementNameAtPosition } from './utils/get-jsx-element-name-at-position'
+import { openCssFileAndScrollToClass } from './utils/open-css-file'
 
 const { activate, deactivate } = defineExtension(() => {
   // Helper to get configuration values
@@ -28,6 +29,7 @@ const { activate, deactivate } = defineExtension(() => {
     const classAttribute = getConfig<'className' | 'class'>('classAttribute') || 'className'
     const cssPropertyNaming =
       getConfig<'kebab-case' | 'camelCase'>('cssPropertyNaming') || 'kebab-case'
+    const openCssFile = getConfig<boolean>('openCssFile') ?? true
 
     // Get file paths
     const filePath = document.fileName
@@ -118,6 +120,11 @@ const { activate, deactivate } = defineExtension(() => {
 
     // Save the document
     await document.save()
+
+    // Open CSS file and scroll to new class if configured
+    if (openCssFile) {
+      await openCssFileAndScrollToClass(cssModulePath, className)
+    }
   })
 })
 
