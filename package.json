@@ -2,7 +2,7 @@
   "publisher": "bigmistqke",
   "name": "jsx-style-to-css-module",
   "displayName": "JSX Style to CSS Module",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "private": true,
   "packageManager": "pnpm@10.4.1",
   "description": "Refactor inline styles to CSS modules",
@@ -31,7 +31,7 @@
     "vscode": "^1.97.0"
   },
   "activationEvents": [
-    "onStartupFinished"
+    "*"
   ],
   "contributes": {
     "commands": [
@@ -72,7 +72,7 @@
     }
   },
   "scripts": {
-    "build": "tsdown src/index.ts --external vscode --external typescript",
+    "build": "tsup",
     "dev": "nr build --watch --sourcemap",
     "prepare": "nr update",
     "update": "vscode-ext-gen --output src/generated/meta.ts",
@@ -81,13 +81,15 @@
     "typecheck": "tsc --noEmit",
     "vscode:prepublish": "nr build",
     "release": "bumpp",
-    "ext:package": "vsce package --no-dependencies",
+    "ext:package": "vsce package",
     "ext:publish": "vsxpub --no-dependencies"
   },
   "dependencies": {
+    "esbuild": "^0.27.0",
     "postcss": "^8.5.6",
     "postcss-selector-parser": "^7.1.0",
-    "ts-morph": "^27.0.2"
+    "ts-morph": "^27.0.2",
+    "typescript": "^5.7.3"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^4.2.1",
@@ -102,6 +104,7 @@
     "reactive-vscode": "^0.2.10",
     "taze": "^19.8.1",
     "tsdown": "^0.9.6",
+    "tsup": "^8.5.1",
     "typescript": "^5.7.3",
     "vite": "^6.1.0",
     "vitest": "^3.0.5",

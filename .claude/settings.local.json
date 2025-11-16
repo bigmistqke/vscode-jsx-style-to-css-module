@@ -4,7 +4,8 @@
       "Bash(find:*)",
       "Bash(pnpm install:*)",
       "Bash(pnpm test:*)",
-      "Bash(mkdir:*)"
+      "Bash(mkdir:*)",
+      "Bash(code --uninstall-extension:*)"
     ],
     "deny": []
   }

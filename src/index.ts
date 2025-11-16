@@ -160,11 +160,11 @@ const { activate, deactivate } = defineExtension(() => {
   }
 
   // Register commands
-  useCommand('style-to-css-module', async () => {
+  useCommand('jsx-style-to-css-module', async () => {
     await extractStylesToModule(false)
   })
 
-  useCommand('style-to-css-module-and-open', async () => {
+  useCommand('jsx-style-to-css-module-and-open', async () => {
     await extractStylesToModule(true)
   })
 })
