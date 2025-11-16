@@ -1,6 +1,6 @@
 {
-  "publisher": "vscode-style-to-css-module",
-  "name": "vscode-jsx-style-to-css-module",
+  "publisher": "jsx-style-to-css-module",
+  "name": "jsx-style-to-css-module",
   "displayName": "JSX Style to CSS Module",
   "version": "0.0.1",
   "private": true,
@@ -40,12 +40,12 @@
   "contributes": {
     "commands": [
       {
-        "command": "style-to-css-module",
+        "command": "jsx-style-to-css-module",
         "title": "Extract Inline Styles to CSS Module",
         "category": "Refactor"
       },
       {
-        "command": "style-to-css-module-and-open",
+        "command": "jsx-style-to-css-module-and-open",
         "title": "Extract Inline Styles to CSS Module and Open File",
         "category": "Refactor"
       }
@@ -54,7 +54,7 @@
       "type": "object",
       "title": "JSX Style to CSS Module",
       "properties": {
-        "style-to-css-module.classAttribute": {
+        "jsx-style-to-css-module.classAttribute": {
           "type": "string",
           "enum": [
             "className",
@@ -63,7 +63,7 @@
           "default": "class",
           "description": "The attribute name to use for CSS classes (className for React, class for Solid)"
         },
-        "style-to-css-module.cssPropertyNaming": {
+        "jsx-style-to-css-module.cssPropertyNaming": {
           "type": "string",
           "enum": [
             "kebab-case",
