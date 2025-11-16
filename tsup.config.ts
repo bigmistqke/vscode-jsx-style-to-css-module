@@ -4,6 +4,6 @@ export default defineConfig({
   entry: ['src/index.ts'],
   format: ['cjs'],
   external: ['vscode'],
-  // noExternal: [/^(?!vscode$).*/], // Bundle all dependencies except vscode
+  noExternal: [/^(?!vscode$).*/],
   clean: true,
 })
