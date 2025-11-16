@@ -1,0 +1,4 @@
+{
+  "style-to-css-module.classAttribute": "class",
+  "style-to-css-module.cssPropertyNaming": "kebab-case"
+}

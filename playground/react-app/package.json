@@ -1,0 +1,15 @@
+{
+  "name": "react-playground",
+  "version": "1.0.0",
+  "description": "React playground for testing vscode-jsx-style-to-css extension",
+  "private": true,
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
+    "typescript": "^5.0.0"
+  }
+}
