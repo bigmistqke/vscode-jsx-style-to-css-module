@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { createSourceFile } from '../src/utils/create-default-source-file'
+import { createDefaultSourceFile } from '../src/utils/create-default-source-file'
 import { getJsxElementNameAtPosition } from '../src/utils/get-jsx-element-name-at-position'
 
 describe('getJsxElementNameAtPosition', () => {
@@ -12,7 +12,7 @@ const Component = () => {
   return <div style={{ color: 'red' }}>Hello</div>
 }
 `
-    const sourceFile = createSourceFile(fileName, fileContent)
+    const sourceFile = createDefaultSourceFile(fileName, fileContent)
     const elementName = getJsxElementNameAtPosition(sourceFile, 80)
     expect(elementName).toBe('div')
   })
@@ -26,7 +26,7 @@ const Component = () => {
   return <input style={{ border: '1px solid #ccc' }} />
 }
 `
-    const sourceFile = createSourceFile(fileName, fileContent)
+    const sourceFile = createDefaultSourceFile(fileName, fileContent)
     const elementName = getJsxElementNameAtPosition(sourceFile, 80)
     expect(elementName).toBe('input')
   })
@@ -40,7 +40,7 @@ const Component = () => {
   return <Button style={{ padding: '10px' }}>Click me</Button>
 }
 `
-    const sourceFile = createSourceFile(fileName, fileContent)
+    const sourceFile = createDefaultSourceFile(fileName, fileContent)
     const elementName = getJsxElementNameAtPosition(sourceFile, 80)
     expect(elementName).toBe('Button')
   })
@@ -52,7 +52,7 @@ import React from 'react'
 
 const x = 5 // No JSX here
 `
-    const sourceFile = createSourceFile(fileName, fileContent)
+    const sourceFile = createDefaultSourceFile(fileName, fileContent)
     const elementName = getJsxElementNameAtPosition(sourceFile, 40)
     expect(elementName).toBeNull()
   })
@@ -66,7 +66,7 @@ const Component = () => {
   return <div className="test">No style</div>
 }
 `
-    const sourceFile = createSourceFile(fileName, fileContent)
+    const sourceFile = createDefaultSourceFile(fileName, fileContent)
     const elementName = getJsxElementNameAtPosition(sourceFile, 80)
     expect(elementName).toBe('div')
   })
