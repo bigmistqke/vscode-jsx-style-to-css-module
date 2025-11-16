@@ -4,7 +4,11 @@ import { defineExtension, useCommand } from 'reactive-vscode'
 import * as vscode from 'vscode'
 import { window, workspace, WorkspaceEdit } from 'vscode'
 import { generateUniqueClassName, stylesToCSS } from './utils/style-helpers'
-import { transformJsxStyleToClassName } from './utils/ast-transformer'
+import {
+  createSourceFile,
+  transformJsxStyleToClassName,
+} from './utils/transform-jsx-style-to-class-name'
+import { getJsxElementNameAtPosition } from './utils/get-jsx-element-name-at-position'
 
 const { activate, deactivate } = defineExtension(() => {
   // Helper to get configuration values
@@ -24,7 +28,8 @@ const { activate, deactivate } = defineExtension(() => {
 
     // Get configuration
     const classAttribute = getConfig<'className' | 'class'>('classAttribute') || 'className'
-    const cssPropertyNaming = getConfig<'kebab-case' | 'camelCase'>('cssPropertyNaming') || 'kebab-case'
+    const cssPropertyNaming =
+      getConfig<'kebab-case' | 'camelCase'>('cssPropertyNaming') || 'kebab-case'
 
     // Get file paths
     const filePath = document.fileName
@@ -38,42 +43,46 @@ const { activate, deactivate } = defineExtension(() => {
       cssContent = fs.readFileSync(cssModulePath, 'utf8')
     }
 
-    // Prompt for class name (we need this before transformation)
+    // Create AST once
+    const documentText = document.getText()
+    const offset = document.offsetAt(position)
+    const sourceFile = createSourceFile(document.fileName, documentText)
+
+    // Get element name first if needed
+    const elementName = getJsxElementNameAtPosition(sourceFile, offset)
+    if (!elementName) {
+      window.showErrorMessage('No JSX element found at cursor position')
+      return
+    }
+
+    // Prompt for class name
     let className = await window.showInputBox({
       prompt: 'Enter class name (press Enter for random name)',
       placeHolder: 'my-class',
     })
 
     if (!className) {
-      // We need element name for random generation, so let's get a temp one
-      className = 'temp-class'
+      // Generate a unique class name based on element name
+      className = generateUniqueClassName(cssContent, elementName)
     }
 
     // Transform the AST
-    const transformResult = transformJsxStyleToClassName(document, position, className, classAttribute)
+    const transformResult = transformJsxStyleToClassName({
+      sourceFile,
+      offset,
+      className,
+      classAttribute,
+    })
 
     if (!transformResult) {
       window.showErrorMessage('No inline style found at cursor position')
       return
     }
 
-    // If we used temp class name, generate a proper one now
-    if (className === 'temp-class') {
-      className = generateUniqueClassName(cssContent, transformResult.elementName)
-      
-      // Re-transform with the correct class name
-      const finalTransformResult = transformJsxStyleToClassName(document, position, className, classAttribute)
-      if (finalTransformResult) {
-        transformResult.transformedCode = finalTransformResult.transformedCode
-        transformResult.className = className
-      }
-    }
-
     // Convert extracted styles to CSS
-    const styleProperties: { [key: string]: string } = {}
-    transformResult.extractedStyles.forEach(style => {
-      styleProperties[style.name] = style.value
-    })
+    const styleProperties = Object.fromEntries(
+      transformResult.extractedStyles.map(({ name, value }) => [name, value]),
+    )
 
     // Ensure CSS content ends with newline
     if (cssContent && !cssContent.endsWith('\n')) {
@@ -88,7 +97,6 @@ const { activate, deactivate } = defineExtension(() => {
     const edit = new WorkspaceEdit()
 
     // Check if CSS module is already imported
-    const documentText = document.getText()
     let transformedCode = transformResult.transformedCode
 
     // Add import if it doesn't exist
@@ -100,9 +108,9 @@ const { activate, deactivate } = defineExtension(() => {
     // Replace the entire document with transformed code
     const fullRange = new vscode.Range(
       document.positionAt(0),
-      document.positionAt(documentText.length)
+      document.positionAt(documentText.length),
     )
-    
+
     edit.replace(document.uri, fullRange, transformedCode)
 
     // Apply edits

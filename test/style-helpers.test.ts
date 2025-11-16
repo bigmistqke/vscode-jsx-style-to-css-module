@@ -247,15 +247,14 @@ describe('style-helpers', () => {
       expect(classNames.size).toBe(10)
     })
 
-    it('should return null after max retries', () => {
+    it('should throw error after max retries', () => {
       // Create CSS with all possible class names (0-999)
       let css = ''
       for (let i = 0; i < 1000; i++) {
         css += `.test-${i} { color: red; }\n`
       }
       
-      const className = generateUniqueClassName(css, 'test', 10)
-      expect(className).toBe(null)
+      expect(() => generateUniqueClassName(css, 'test', 10)).toThrow('Max retries generating unique class name')
     })
 
     it('should use default element prefix when no tag provided', () => {
