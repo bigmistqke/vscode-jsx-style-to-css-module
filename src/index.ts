@@ -8,6 +8,7 @@ import { createDefaultSourceFile } from '../src/utils/create-default-source-file
 import { transformJsxStyleToClassName } from './utils/transform-jsx-style-to-class-name'
 import { getJsxElementNameAtPosition } from './utils/get-jsx-element-name-at-position'
 import { openCssFileAndScrollToClass } from './utils/open-css-file'
+import { classExists } from './utils/css-parser'
 
 const { activate, deactivate } = defineExtension(() => {
   // Helper to get configuration values
@@ -55,15 +56,46 @@ const { activate, deactivate } = defineExtension(() => {
       return
     }
 
-    // Prompt for class name
-    let className = await window.showInputBox({
-      prompt: 'Enter class name (press Enter for random name)',
-      placeHolder: 'my-class',
-    })
+    // Prompt for class name with validation
+    let className: string | undefined
+    let attempts = 0
+    const maxAttempts = 10
 
-    if (!className) {
-      // Generate a unique class name based on element name
+    while (attempts < maxAttempts) {
+      const promptMessage = attempts === 0 
+        ? 'Enter class name:'
+        : `Class "${className}" already exists. Try a different name:`
+
+      className = await window.showInputBox({
+        prompt: promptMessage,
+        placeHolder: 'my-class (empty = random)',
+        value: attempts > 0 ? '' : undefined, // Clear previous input on retry
+      })
+
+      // User cancelled
+      if (className === undefined) {
+        window.showInformationMessage('Style extraction cancelled')
+        return
+      }
+
+      // User wants random name
+      if (!className) {
+        className = generateUniqueClassName(cssContent, elementName)
+        break
+      }
+
+      // Check if class name already exists
+      if (!classExists(cssContent, className)) {
+        break
+      }
+
+      attempts++
+    }
+
+    // If we still don't have a unique name after max attempts, generate one
+    if (attempts >= maxAttempts) {
       className = generateUniqueClassName(cssContent, elementName)
+      window.showWarningMessage(`Generated unique name "${className}" after multiple conflicts`)
     }
 
     // Transform the AST

@@ -1,4 +1,5 @@
 import * as vscode from 'vscode'
+import { findClassPosition } from './css-parser'
 
 /**
  * Opens a CSS file in the editor side-by-side and scrolls to a specific class definition
@@ -31,14 +32,13 @@ export async function openCssFileAndScrollToClass(
       preview: false,
     })
     
-    // Find the class definition in the CSS file
+    // Find the class definition in the CSS file using CSS parser
     const text = document.getText()
-    const classPattern = new RegExp(`\\.${escapeRegExp(className)}\\s*\\{`, 'g')
-    const match = classPattern.exec(text)
+    const classInfo = findClassPosition(text, className)
     
-    if (match) {
-      // Calculate the position of the class definition
-      const position = document.positionAt(match.index)
+    if (classInfo) {
+      // Convert line/column to VSCode position (VSCode uses 0-based indexing)
+      const position = new vscode.Position(classInfo.startLine - 1, classInfo.startColumn - 1)
       
       // Move cursor to the class definition
       editor.selection = new vscode.Selection(position, position)
@@ -55,9 +55,3 @@ export async function openCssFileAndScrollToClass(
   }
 }
 
-/**
- * Escapes special regex characters in a string
- */
-function escapeRegExp(string: string): string {
-  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-}
