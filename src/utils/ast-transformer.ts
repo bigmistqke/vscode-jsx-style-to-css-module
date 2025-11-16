@@ -102,11 +102,11 @@ function transformElement(
   const elementName = ts.isIdentifier(tagName) ? tagName.text : tagName.getText()
   
   // Extract styles from the style attribute
-  const extractedStyles = extractStylesFromElement(element)
+  const styleExtractionResult = extractStylesFromElement(element)
   
   // Transform the AST
   const transformedSourceFile = ts.transform(sourceFile, [
-    createStyleToClassTransformer(element, className, classAttribute)
+    createStyleToClassTransformer(element, className, classAttribute, styleExtractionResult)
   ]).transformed[0]
   
   // Print the transformed code
@@ -115,13 +115,13 @@ function transformElement(
   
   return {
     transformedCode,
-    extractedStyles,
+    extractedStyles: styleExtractionResult.staticStyles,
     elementName,
     className
   }
 }
 
-function extractStylesFromElement(element: ts.JsxElement | ts.JsxSelfClosingElement): StyleProperty[] {
+function extractStylesFromElement(element: ts.JsxElement | ts.JsxSelfClosingElement): StyleExtractionResult {
   const attributes = ts.isJsxElement(element) 
     ? element.openingElement.attributes 
     : element.attributes
@@ -141,24 +141,49 @@ function extractStylesFromElement(element: ts.JsxElement | ts.JsxSelfClosingElem
     }
   }
   
-  return []
+  return {
+    staticStyles: [],
+    dynamicProperties: [],
+    hasOnlyStaticStyles: true
+  }
 }
 
-function extractStylePropertiesFromObjectLiteral(objectLiteral: ts.ObjectLiteralExpression): StyleProperty[] {
-  const styles: StyleProperty[] = []
+export interface StyleExtractionResult {
+  staticStyles: StyleProperty[]
+  dynamicProperties: ts.ObjectLiteralElementLike[]
+  hasOnlyStaticStyles: boolean
+}
+
+function extractStylePropertiesFromObjectLiteral(objectLiteral: ts.ObjectLiteralExpression): StyleExtractionResult {
+  const staticStyles: StyleProperty[] = []
+  const dynamicProperties: ts.ObjectLiteralElementLike[] = []
   
   for (const property of objectLiteral.properties) {
     if (ts.isPropertyAssignment(property)) {
       const name = getPropertyName(property.name)
-      const value = getPropertyValue(property.initializer)
+      const staticValue = getStaticPropertyValue(property.initializer)
       
-      if (name && value) {
-        styles.push({ name, value })
+      if (name && staticValue !== null) {
+        // This is a static style we can extract
+        staticStyles.push({ name, value: staticValue })
+      } else {
+        // This is a dynamic style, keep it in the style prop
+        dynamicProperties.push(property)
       }
+    } else if (ts.isSpreadAssignment(property)) {
+      // Always keep spread assignments as they're dynamic
+      dynamicProperties.push(property)
+    } else {
+      // Other property types (methods, getters, setters) - keep as dynamic
+      dynamicProperties.push(property)
     }
   }
   
-  return styles
+  return {
+    staticStyles,
+    dynamicProperties,
+    hasOnlyStaticStyles: dynamicProperties.length === 0
+  }
 }
 
 function getPropertyName(name: ts.PropertyName): string | null {
@@ -173,29 +198,39 @@ function getPropertyName(name: ts.PropertyName): string | null {
   return null
 }
 
-function getPropertyValue(initializer: ts.Expression): string | null {
+function getStaticPropertyValue(initializer: ts.Expression): string | null {
   if (ts.isStringLiteral(initializer)) {
     return initializer.text
   } else if (ts.isNumericLiteral(initializer)) {
     return initializer.text
-  } else if (ts.isTemplateExpression(initializer) || ts.isNoSubstitutionTemplateLiteral(initializer)) {
-    // Handle template literals
+  } else if (ts.isNoSubstitutionTemplateLiteral(initializer)) {
+    // Only simple template literals without expressions
     return initializer.getText().slice(1, -1) // Remove backticks
+  } else if (ts.isTrueKeyword(initializer) || ts.isFalseKeyword(initializer)) {
+    return initializer.getText()
   }
-  // For complex expressions, we might need to evaluate them or handle specially
-  return initializer.getText()
+  
+  // Anything else is considered dynamic (variables, function calls, expressions, etc.)
+  return null
 }
 
 function createStyleToClassTransformer(
   targetElement: ts.JsxElement | ts.JsxSelfClosingElement,
   className: string,
-  classAttribute: 'class' | 'className'
+  classAttribute: 'class' | 'className',
+  styleExtractionResult: StyleExtractionResult
 ): ts.TransformerFactory<ts.Node> {
   return (context: ts.TransformationContext) => {
     const visit: ts.Visitor = (node: ts.Node): ts.Node => {
       // If this is our target element, transform it
       if (node === targetElement) {
-        return transformJsxElement(node as ts.JsxElement | ts.JsxSelfClosingElement, className, classAttribute, context)
+        return transformJsxElement(
+          node as ts.JsxElement | ts.JsxSelfClosingElement, 
+          className, 
+          classAttribute, 
+          styleExtractionResult,
+          context
+        )
       }
       
       return ts.visitEachChild(node, visit, context)
@@ -209,11 +244,12 @@ function transformJsxElement(
   element: ts.JsxElement | ts.JsxSelfClosingElement,
   className: string,
   classAttribute: 'class' | 'className',
+  styleExtractionResult: StyleExtractionResult,
   context: ts.TransformationContext
 ): ts.JsxElement | ts.JsxSelfClosingElement {
   if (ts.isJsxElement(element)) {
     // Transform JSX element
-    const newOpeningElement = transformOpeningElement(element.openingElement, className, classAttribute, context)
+    const newOpeningElement = transformOpeningElement(element.openingElement, className, classAttribute, styleExtractionResult, context)
     
     return context.factory.updateJsxElement(
       element,
@@ -223,7 +259,7 @@ function transformJsxElement(
     )
   } else {
     // Transform self-closing element
-    return transformSelfClosingElement(element, className, classAttribute, context)
+    return transformSelfClosingElement(element, className, classAttribute, styleExtractionResult, context)
   }
 }
 
@@ -231,9 +267,10 @@ function transformOpeningElement(
   openingElement: ts.JsxOpeningElement,
   className: string,
   classAttribute: 'class' | 'className',
+  styleExtractionResult: StyleExtractionResult,
   context: ts.TransformationContext
 ): ts.JsxOpeningElement {
-  const newAttributes = transformAttributes(openingElement.attributes, className, classAttribute, context)
+  const newAttributes = transformAttributes(openingElement.attributes, className, classAttribute, styleExtractionResult, context)
   
   return context.factory.updateJsxOpeningElement(
     openingElement,
@@ -247,9 +284,10 @@ function transformSelfClosingElement(
   element: ts.JsxSelfClosingElement,
   className: string,
   classAttribute: 'class' | 'className',
+  styleExtractionResult: StyleExtractionResult,
   context: ts.TransformationContext
 ): ts.JsxSelfClosingElement {
-  const newAttributes = transformAttributes(element.attributes, className, classAttribute, context)
+  const newAttributes = transformAttributes(element.attributes, className, classAttribute, styleExtractionResult, context)
   
   return context.factory.updateJsxSelfClosingElement(
     element,
@@ -263,34 +301,76 @@ function transformAttributes(
   attributes: ts.JsxAttributes,
   className: string,
   classAttribute: 'class' | 'className',
+  styleExtractionResult: StyleExtractionResult,
   context: ts.TransformationContext
 ): ts.JsxAttributes {
   const newProperties: ts.JsxAttributeLike[] = []
   
-  // Add all attributes except 'style'
+  // Add all attributes, transforming the style attribute if needed
   for (const property of attributes.properties) {
     if (ts.isJsxAttribute(property) && 
         ts.isIdentifier(property.name) && 
         property.name.text === 'style') {
-      // Skip the style attribute - we'll replace it with className
+      
+      // If we have dynamic styles, keep a modified style attribute
+      if (!styleExtractionResult.hasOnlyStaticStyles) {
+        const dynamicStyleAttribute = createDynamicStyleAttribute(styleExtractionResult.dynamicProperties, context)
+        newProperties.push(dynamicStyleAttribute)
+      }
+      // Note: we skip adding the original style attribute since we're replacing it
       continue
     }
     newProperties.push(property)
   }
   
-  // Add the className attribute
-  const classNameAttribute = context.factory.createJsxAttribute(
-    context.factory.createIdentifier(classAttribute),
-    context.factory.createJsxExpression(
-      undefined,
-      context.factory.createElementAccessExpression(
-        context.factory.createIdentifier('styles'),
-        context.factory.createStringLiteral(className)
+  // Add the className attribute (only if we extracted some static styles)
+  if (styleExtractionResult.staticStyles.length > 0) {
+    const classNameAttribute = context.factory.createJsxAttribute(
+      context.factory.createIdentifier(classAttribute),
+      context.factory.createJsxExpression(
+        undefined,
+        context.factory.createElementAccessExpression(
+          context.factory.createIdentifier('styles'),
+          context.factory.createStringLiteral(className)
+        )
       )
     )
-  )
-  
-  newProperties.push(classNameAttribute)
+    
+    newProperties.push(classNameAttribute)
+  }
   
   return context.factory.updateJsxAttributes(attributes, newProperties)
+}
+
+function createDynamicStyleAttribute(
+  dynamicProperties: ts.ObjectLiteralElementLike[],
+  context: ts.TransformationContext
+): ts.JsxAttribute {
+  // Create a new object literal with only the dynamic properties
+  const dynamicObjectLiteral = context.factory.createObjectLiteralExpression(
+    dynamicProperties.map(prop => {
+      if (ts.isPropertyAssignment(prop)) {
+        return context.factory.createPropertyAssignment(
+          prop.name,
+          prop.initializer
+        )
+      } else if (ts.isSpreadAssignment(prop)) {
+        return context.factory.createSpreadAssignment(
+          prop.expression
+        )
+      } else {
+        // For other property types (methods, getters, setters), preserve as-is
+        return prop
+      }
+    }),
+    false // not multiline for simple cases
+  )
+  
+  return context.factory.createJsxAttribute(
+    context.factory.createIdentifier('style'),
+    context.factory.createJsxExpression(
+      undefined,
+      dynamicObjectLiteral
+    )
+  )
 }
