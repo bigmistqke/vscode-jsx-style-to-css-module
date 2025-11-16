@@ -26,6 +26,18 @@ export interface TransformInput {
   classAttribute: 'class' | 'className'
 }
 
+interface StyleExtractionResult {
+  staticStyles: StyleProperty[]
+  dynamicProperties: Node[]
+  hasOnlyStaticStyles: boolean
+}
+
+/**********************************************************************************/
+/*                                                                                */
+/*                                      Utils                                     */
+/*                                                                                */
+/**********************************************************************************/
+
 /**
  * Check if a string is a valid JavaScript identifier that can be used with dot notation
  */
@@ -33,100 +45,8 @@ function isValidIdentifier(str: string): boolean {
   // 1. Only alphanumeric characters
   // 2. Not start with a number
   const identifierRegex = /^[a-zA-Z][a-zA-Z0-9]*$/
-  
+
   return identifierRegex.test(str)
-}
-
-/**
- * Transform JSX by replacing style prop with className prop and extracting styles
- */
-export function transformJsxStyleToClassName(input: TransformInput): TransformResult | null {
-  const { sourceFile, offset, className, classAttribute } = input
-
-  try {
-    // Find JSX element at position
-    const jsxElement = findJsxElementWithStyleAtPosition(sourceFile, offset)
-    if (!jsxElement) return null
-
-    // Get the opening element
-    const openingElement =
-      jsxElement.getKind() === SyntaxKind.JsxElement
-        ? jsxElement.asKindOrThrow(SyntaxKind.JsxElement).getOpeningElement()
-        : jsxElement.asKindOrThrow(SyntaxKind.JsxSelfClosingElement)
-
-    // Find style attribute
-    const styleAttr = openingElement.getAttribute('style') as JsxAttribute | undefined
-    if (!styleAttr) return null
-
-    // Get style object literal
-    const styleExpression = styleAttr.getInitializer()?.asKind(SyntaxKind.JsxExpression)
-    const objectLiteral = styleExpression
-      ?.getExpression()
-      ?.asKind(SyntaxKind.ObjectLiteralExpression)
-    if (!objectLiteral) return null
-
-    // Extract styles
-    const { staticStyles, dynamicProperties } = extractStyles(objectLiteral)
-
-    // Get element name before transformation
-    const elementName = openingElement.getTagNameNode().getText()
-
-    // Transform the element
-    if (staticStyles.length > 0) {
-      // Add className/class attribute
-      const classNameValue = isValidIdentifier(className) 
-        ? `styles.${className}` 
-        : `styles["${className}"]`
-
-      // Check if className/class attribute already exists
-      const existingClassAttr = openingElement.getAttribute(classAttribute) as
-        | JsxAttribute
-        | undefined
-
-      if (existingClassAttr) {
-        // Merge with existing className
-        const existingInit = existingClassAttr.getInitializer()
-        if (existingInit) {
-          const existingValue = existingInit.getText()
-          // Handle different cases of existing className
-          if (existingValue.startsWith('{') && existingValue.endsWith('}')) {
-            const inner = existingValue.slice(1, -1)
-            existingClassAttr.setInitializer(`{\`\${${inner}} \${${classNameValue}}\`}`)
-          } else {
-            existingClassAttr.setInitializer(`{${classNameValue}}`)
-          }
-        } else {
-          existingClassAttr.setInitializer(`{${classNameValue}}`)
-        }
-      } else {
-        // Add new className attribute
-        openingElement.addAttribute({
-          name: classAttribute,
-          initializer: `{${classNameValue}}`,
-        })
-      }
-    }
-
-    // Update or remove style attribute
-    if (dynamicProperties.length > 0) {
-      // Keep only dynamic styles
-      const dynamicPropsText = dynamicProperties.map(prop => prop.getText()).join(', ')
-      styleAttr.setInitializer(`{{ ${dynamicPropsText} }}`)
-    } else {
-      // Remove style attribute completely
-      styleAttr.remove()
-    }
-
-    return {
-      transformedCode: sourceFile.getFullText(),
-      extractedStyles: staticStyles,
-      elementName,
-      className,
-    }
-  } catch (error) {
-    console.error('Error transforming JSX:', error)
-    return null
-  }
 }
 
 /**
@@ -161,12 +81,6 @@ function findJsxElementWithStyleAtPosition(
   }
 
   return null
-}
-
-interface StyleExtractionResult {
-  staticStyles: StyleProperty[]
-  dynamicProperties: Node[]
-  hasOnlyStaticStyles: boolean
 }
 
 /**
@@ -251,11 +165,104 @@ function getStaticValue(node: Node): string {
   } else if (Node.isNoSubstitutionTemplateLiteral(node)) {
     // Remove backticks
     return node.getText().slice(1, -1)
-  } else if (
-    node.getKind() === SyntaxKind.TrueKeyword ||
-    node.getKind() === SyntaxKind.FalseKeyword
-  ) {
-    return node.getText()
   }
   return node.getText()
+}
+
+/**********************************************************************************/
+/*                                                                                */
+/*                        Transform Jsx Style To Class Name                       */
+/*                                                                                */
+/**********************************************************************************/
+
+/**
+ * Transform JSX by replacing style prop with className prop and extracting styles
+ */
+export function transformJsxStyleToClassName(input: TransformInput): TransformResult | null {
+  const { sourceFile, offset, className, classAttribute } = input
+
+  try {
+    // Find JSX element at position
+    const jsxElement = findJsxElementWithStyleAtPosition(sourceFile, offset)
+    if (!jsxElement) return null
+
+    // Get the opening element
+    const openingElement =
+      jsxElement.getKind() === SyntaxKind.JsxElement
+        ? jsxElement.asKindOrThrow(SyntaxKind.JsxElement).getOpeningElement()
+        : jsxElement.asKindOrThrow(SyntaxKind.JsxSelfClosingElement)
+
+    // Find style attribute
+    const styleAttr = openingElement.getAttribute('style') as JsxAttribute | undefined
+    if (!styleAttr) return null
+
+    // Get style object literal
+    const styleExpression = styleAttr.getInitializer()?.asKind(SyntaxKind.JsxExpression)
+    const objectLiteral = styleExpression
+      ?.getExpression()
+      ?.asKind(SyntaxKind.ObjectLiteralExpression)
+    if (!objectLiteral) return null
+
+    // Extract styles
+    const { staticStyles, dynamicProperties } = extractStyles(objectLiteral)
+
+    // Get element name before transformation
+    const elementName = openingElement.getTagNameNode().getText()
+
+    // Transform the element
+    if (staticStyles.length > 0) {
+      // Add className/class attribute
+      const classNameValue = isValidIdentifier(className)
+        ? `styles.${className}`
+        : `styles["${className}"]`
+
+      // Check if className/class attribute already exists
+      const existingClassAttr = openingElement.getAttribute(classAttribute) as
+        | JsxAttribute
+        | undefined
+
+      if (existingClassAttr) {
+        // Merge with existing className
+        const existingInit = existingClassAttr.getInitializer()
+        if (existingInit) {
+          const existingValue = existingInit.getText()
+          // Handle different cases of existing className
+          if (existingValue.startsWith('{') && existingValue.endsWith('}')) {
+            const inner = existingValue.slice(1, -1)
+            existingClassAttr.setInitializer(`{\`\${${inner}} \${${classNameValue}}\`}`)
+          } else {
+            existingClassAttr.setInitializer(`{${classNameValue}}`)
+          }
+        } else {
+          existingClassAttr.setInitializer(`{${classNameValue}}`)
+        }
+      } else {
+        // Add new className attribute
+        openingElement.addAttribute({
+          name: classAttribute,
+          initializer: `{${classNameValue}}`,
+        })
+      }
+    }
+
+    // Update or remove style attribute
+    if (dynamicProperties.length > 0) {
+      // Keep only dynamic styles
+      const dynamicPropsText = dynamicProperties.map(prop => prop.getText()).join(', ')
+      styleAttr.setInitializer(`{{ ${dynamicPropsText} }}`)
+    } else {
+      // Remove style attribute completely
+      styleAttr.remove()
+    }
+
+    return {
+      transformedCode: sourceFile.getFullText(),
+      extractedStyles: staticStyles,
+      elementName,
+      className,
+    }
+  } catch (error) {
+    console.error('Error transforming JSX:', error)
+    return null
+  }
 }

@@ -15,7 +15,8 @@ const { activate, deactivate } = defineExtension(() => {
     return workspace.getConfiguration('style-to-css-module').get<T>(key)
   }
 
-  useCommand('style-to-css-module', async () => {
+  // Helper function to extract styles to CSS module
+  async function extractStylesToModule(openCssFile: boolean = false) {
     const editor = window.activeTextEditor
     if (!editor) {
       window.showErrorMessage('No active editor')
@@ -29,7 +30,6 @@ const { activate, deactivate } = defineExtension(() => {
     const classAttribute = getConfig<'className' | 'class'>('classAttribute') || 'className'
     const cssPropertyNaming =
       getConfig<'kebab-case' | 'camelCase'>('cssPropertyNaming') || 'kebab-case'
-    const openCssFile = getConfig<boolean>('openCssFile') ?? true
 
     // Get file paths
     const filePath = document.fileName
@@ -121,10 +121,19 @@ const { activate, deactivate } = defineExtension(() => {
     // Save the document
     await document.save()
 
-    // Open CSS file and scroll to new class if configured
+    // Open CSS file and scroll to new class if requested
     if (openCssFile) {
       await openCssFileAndScrollToClass(cssModulePath, className)
     }
+  }
+
+  // Register commands
+  useCommand('style-to-css-module', async () => {
+    await extractStylesToModule(false)
+  })
+
+  useCommand('style-to-css-module-and-open', async () => {
+    await extractStylesToModule(true)
   })
 })
 
