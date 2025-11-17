@@ -58,6 +58,35 @@ The extension intelligently handles different types of styles:
 - Conditional expressions: `opacity: isActive ? 1 : 0.5`
 - Spread operators: `...dynamicStyles`
 
+## Class Attribute Behavior
+
+When you extract styles from an element that already has a `className` or `class` attribute, the extension **creates a separate class attribute** instead of attempting to merge them. This gives you full control over how to handle multiple classes.
+
+### Example
+
+**Before:**
+```jsx
+<div className="existing-class" style={{ backgroundColor: 'red', padding: '10px' }}>
+  Content
+</div>
+```
+
+**After:**
+```jsx
+<div className="existing-class" className={styles["new-styles"]}>
+  Content
+</div>
+```
+
+The browser will use the last `className` attribute, so you'll need to manually merge them if desired:
+```jsx
+<div className={`existing-class ${styles["new-styles"]}`}>
+  Content
+</div>
+```
+
+This approach keeps the tool simple and predictable, letting you decide how to handle class name conflicts.
+
 ## Configuration
 
 Configure these in your workspace or user settings:

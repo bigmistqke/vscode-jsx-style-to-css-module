@@ -579,4 +579,133 @@ export default Component
     const result = transformJsxStyleToClassName(input)
     expect(result).toBeNull()
   })
+
+  it('should create separate className when element already has className', () => {
+    const fileName = 'test.tsx'
+    const fileContent = `
+import React from 'react'
+
+const Component = () => {
+return (
+  <div className="existing-class" style={{ backgroundColor: 'red', padding: '10px' }}>
+    Has existing class
+  </div>
+)
+}
+
+export default Component
+`
+    const ast = TypeScriptParser.parse(fileContent, {
+      ecmaVersion: 'latest' as any,
+      sourceType: 'module',
+      locations: true
+    }) as Node
+
+    const input: TransformInput = {
+      ast,
+      sourceCode: fileContent,
+      offset: 120, // position within the div
+      className: 'new-styles',
+      classAttribute: 'className',
+    }
+
+    const result = transformJsxStyleToClassName(input)
+    expect(result).not.toBeNull()
+    expect(result!.extractedStyles).toEqual([
+      { name: 'backgroundColor', value: 'red' },
+      { name: 'padding', value: '10px' },
+    ])
+    // Should create a separate className attribute, not merge with existing
+    expect(result!.transformedCode).toContain('className="existing-class"')
+    expect(result!.transformedCode).toContain('className={styles["new-styles"]}')
+    expect(result!.transformedCode).not.toContain('style=')
+  })
+
+  it('should create separate class when element already has class (Solid.js)', () => {
+    const fileName = 'test.tsx'
+    const fileContent = `
+import { Component } from 'solid-js'
+
+const TestComponent: Component = () => {
+return (
+  <div class="existing-solid-class" style={{ color: 'blue', margin: '5px' }}>
+    Has existing class
+  </div>
+)
+}
+
+export default TestComponent
+`
+    const ast = TypeScriptParser.parse(fileContent, {
+      ecmaVersion: 'latest' as any,
+      sourceType: 'module',
+      locations: true
+    }) as Node
+
+    const input: TransformInput = {
+      ast,
+      sourceCode: fileContent,
+      offset: 150, // position within the div
+      className: 'new-solid-styles',
+      classAttribute: 'class',
+    }
+
+    const result = transformJsxStyleToClassName(input)
+    expect(result).not.toBeNull()
+    expect(result!.extractedStyles).toEqual([
+      { name: 'color', value: 'blue' },
+      { name: 'margin', value: '5px' },
+    ])
+    // Should create a separate class attribute, not merge with existing
+    expect(result!.transformedCode).toContain('class="existing-solid-class"')
+    expect(result!.transformedCode).toContain('class={styles["new-solid-styles"]}')
+    expect(result!.transformedCode).not.toContain('style=')
+  })
+
+  it('should handle mixed dynamic and static styles with existing className', () => {
+    const fileName = 'test.tsx'
+    const fileContent = `
+import React from 'react'
+
+const Component = () => {
+const dynamicSize = '12px'
+
+return (
+  <div className="base-styles" style={{ 
+    backgroundColor: 'green',
+    fontSize: dynamicSize,
+    border: '1px solid black'
+  }}>
+    Mixed with existing class
+  </div>
+)
+}
+
+export default Component
+`
+    const ast = TypeScriptParser.parse(fileContent, {
+      ecmaVersion: 'latest' as any,
+      sourceType: 'module',
+      locations: true
+    }) as Node
+
+    const input: TransformInput = {
+      ast,
+      sourceCode: fileContent,
+      offset: 180, // position within the div
+      className: 'extracted-styles',
+      classAttribute: 'className',
+    }
+
+    const result = transformJsxStyleToClassName(input)
+    expect(result).not.toBeNull()
+    expect(result!.extractedStyles).toEqual([
+      { name: 'backgroundColor', value: 'green' },
+      { name: 'border', value: '1px solid black' },
+    ])
+    // Should create separate className and keep dynamic styles
+    expect(result!.transformedCode).toContain('className="base-styles"')
+    expect(result!.transformedCode).toContain('className={styles["extracted-styles"]}')
+    expect(result!.transformedCode).toContain('style={{ fontSize: dynamicSize }}')
+  })
 })

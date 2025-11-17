@@ -104,9 +104,42 @@ interface TemplateElement extends Node {
 
 type Expression = Identifier | Literal | ObjectExpression | TemplateLiteral | Node
 
+interface StyleExtractionResult {
+  staticStyles: StyleProperty[]
+  dynamicProperties: Array<{ start: number; end: number; text: string }>
+}
+
+/**********************************************************************************/
+/*                                                                                */
+/*                                      Guards                                    */
+/*                                                                                */
+/**********************************************************************************/
+
 function isValidIdentifier(str: string): boolean {
   const identifierRegex = /^[a-z][a-z0-9]*$/i
   return identifierRegex.test(str)
+}
+
+function isStaticValue(node: Expression): boolean {
+  return (
+    node.type === 'Literal' ||
+    (node.type === 'TemplateLiteral' && (node as TemplateLiteral).expressions.length === 0)
+  )
+}
+
+/**********************************************************************************/
+/*                                                                                */
+/*                                      Utils                                     */
+/*                                                                                */
+/**********************************************************************************/
+
+function getStaticValue(node: Expression): string {
+  if (node.type === 'Literal') {
+    return String((node as Literal).value)
+  } else if (node.type === 'TemplateLiteral' && (node as TemplateLiteral).expressions.length === 0) {
+    return (node as TemplateLiteral).quasis[0].value.cooked
+  }
+  return ''
 }
 
 function walk(node: Node, callback: (node: Node) => void) {
@@ -179,27 +212,6 @@ function findJSXElementWithStyleAtPosition(
   return null
 }
 
-function isStaticValue(node: Expression): boolean {
-  return (
-    node.type === 'Literal' ||
-    (node.type === 'TemplateLiteral' && (node as TemplateLiteral).expressions.length === 0)
-  )
-}
-
-function getStaticValue(node: Expression): string {
-  if (node.type === 'Literal') {
-    return String((node as Literal).value)
-  } else if (node.type === 'TemplateLiteral' && (node as TemplateLiteral).expressions.length === 0) {
-    return (node as TemplateLiteral).quasis[0].value.cooked
-  }
-  return ''
-}
-
-interface StyleExtractionResult {
-  staticStyles: StyleProperty[]
-  dynamicProperties: Array<{ start: number; end: number; text: string }>
-}
-
 function extractStyles(
   objectExpr: ObjectExpression,
   sourceCode: string
@@ -259,8 +271,13 @@ function extractStyles(
   return { staticStyles, dynamicProperties }
 }
 
-export function transformJsxStyleToClassName(input: TransformInput): TransformResult | null {
-  const { ast, sourceCode, offset, className, classAttribute } = input
+/**********************************************************************************/
+/*                                                                                */
+/*                        Transform JSX Style To Class Name                       */
+/*                                                                                */
+/**********************************************************************************/
+
+export function transformJsxStyleToClassName({ ast, sourceCode, offset, className, classAttribute }: TransformInput): TransformResult | null {
 
   debug('=== Transform JSX Style to ClassName ===')
   debug('Input:', { offset, className, classAttribute })
@@ -320,81 +337,28 @@ export function transformJsxStyleToClassName(input: TransformInput): TransformRe
       ? `styles.${className}`
       : `styles["${className}"]`
 
-    // Check if className/class attribute already exists
-    const existingClassAttr = openingElement.attributes.find(
-      attr => attr.type === 'JSXAttribute' && attr.name.name === classAttribute
-    ) as JSXAttribute | undefined
-
-    if (existingClassAttr) {
-      // Merge with existing className
-      if (existingClassAttr.value) {
-        const valueStart = existingClassAttr.value.start!
-        const valueEnd = existingClassAttr.value.end!
-        const existingValue = sourceCode.slice(valueStart, valueEnd)
-        
-        if (existingValue.startsWith('{') && existingValue.endsWith('}')) {
-          const inner = existingValue.slice(1, -1)
-          edits.push({
-            start: valueStart,
-            end: valueEnd,
-            replacement: `{\`\${${inner}} \${${classNameValue}}\`}`
-          })
-        } else {
-          edits.push({
-            start: valueStart,
-            end: valueEnd,
-            replacement: `{${classNameValue}}`
-          })
-        }
-      }
-      
-      // Update or remove style attribute
-      if (dynamicProperties.length > 0) {
-        // Replace style object with only dynamic properties
-        const dynamicPropsText = dynamicProperties.map(p => p.text).join(', ')
-        edits.push({
-          start: styleExpr.start!,
-          end: styleExpr.end!,
-          replacement: `{ ${dynamicPropsText} }`
-        })
-      } else {
-        // Remove entire style attribute including leading space if present
-        let removeStart = styleAttr.start!
-        const beforeStyle = sourceCode.slice(styleAttr.start! - 1, styleAttr.start!)
-        if (beforeStyle === ' ') {
-          removeStart = styleAttr.start! - 1
-        }
-        
-        edits.push({
-          start: removeStart,
-          end: styleAttr.end!,
-          replacement: ''
-        })
-      }
+    // Simply replace style attribute with className attribute
+    let removeStart = styleAttr.start!
+    const beforeStyle = sourceCode.slice(styleAttr.start! - 1, styleAttr.start!)
+    if (beforeStyle === ' ') {
+      removeStart = styleAttr.start! - 1
+    }
+    
+    if (dynamicProperties.length > 0) {
+      // Replace with className and updated style
+      const dynamicPropsText = dynamicProperties.map(p => p.text).join(', ')
+      edits.push({
+        start: removeStart,
+        end: styleAttr.end!,
+        replacement: ` ${classAttribute}={${classNameValue}} style={{ ${dynamicPropsText} }}`
+      })
     } else {
-      // Replace style attribute with className attribute
-      let removeStart = styleAttr.start!
-      const beforeStyle = sourceCode.slice(styleAttr.start! - 1, styleAttr.start!)
-      if (beforeStyle === ' ') {
-        removeStart = styleAttr.start! - 1
-      }
-      
-      if (dynamicProperties.length > 0) {
-        // Replace with className and updated style
-        const dynamicPropsText = dynamicProperties.map(p => p.text).join(', ')
-        edits.push({
-          start: removeStart,
-          end: styleAttr.end!,
-          replacement: ` ${classAttribute}={${classNameValue}} style={{ ${dynamicPropsText} }}`
-        })
-      } else {
-        // Replace with just className
-        edits.push({
-          start: removeStart,
-          end: styleAttr.end!,
-          replacement: ` ${classAttribute}={${classNameValue}}`
-        })
-      }
+      // Replace with just className
+      edits.push({
+        start: removeStart,
+        end: styleAttr.end!,
+        replacement: ` ${classAttribute}={${classNameValue}}`
+      })
     }
 
     // Apply edits in reverse order to maintain positions
