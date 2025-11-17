@@ -1,5 +1,6 @@
 import type { Node } from 'acorn'
 import { createDebug } from './create-debug'
+import { Nullable } from 'reactive-vscode'
 
 const debug = createDebug('transform-jsx-style-to-class-name', false)
 
@@ -60,7 +61,7 @@ interface JSXExpressionContainer extends Node {
 
 interface ObjectExpression extends Node {
   type: 'ObjectExpression'
-  properties: Property[]
+  properties: (Property | SpreadElement)[]
 }
 
 interface Property extends Node {
@@ -105,7 +106,7 @@ interface TemplateElement extends Node {
 type Expression = Identifier | Literal | ObjectExpression | TemplateLiteral | Node
 
 interface StyleExtractionResult {
-  staticStyles: StyleProperty[]
+  staticProperties: StyleProperty[]
   dynamicProperties: Array<{ start: number; end: number; text: string }>
 }
 
@@ -127,6 +128,37 @@ function isStaticValue(node: Expression): boolean {
   )
 }
 
+function isIdentifier(node: Nullable<Node>): node is Identifier{
+  return node?.type === 'Identifier'
+}
+
+function isLiteral(node: Nullable<Node>): node is Literal{
+  return node?.type === 'Literal'
+}
+
+function isTemplateLiteral(node: Nullable<Node>): node is TemplateLiteral{
+  return node?.type === 'TemplateLiteral'
+}
+
+function isProperty(node: Nullable<Node>): node is Property{
+  return node?.type === 'Property'
+}
+
+function isSpreadElement(node: Nullable<Node>): node is SpreadElement{
+  return node?.type === 'SpreadElement'
+}
+
+function isJSXExpressionContainer(node?: Nullable<Node>): node is JSXExpressionContainer {
+  return node?.type === 'JSXExpressionContainer'
+}
+function isJSXAttribute(node: Nullable<Node>): node is JSXAttribute {
+  return node?.type === 'JSXAttribute'
+}
+
+function isObjectExpression(node: Nullable<Node>): node is ObjectExpression {
+  return node?.type === 'ObjectExpression'
+}
+
 /**********************************************************************************/
 /*                                                                                */
 /*                                      Utils                                     */
@@ -134,10 +166,10 @@ function isStaticValue(node: Expression): boolean {
 /**********************************************************************************/
 
 function getStaticValue(node: Expression): string {
-  if (node.type === 'Literal') {
+  if (isLiteral(node)) {
     return String((node as Literal).value)
-  } else if (node.type === 'TemplateLiteral' && (node as TemplateLiteral).expressions.length === 0) {
-    return (node as TemplateLiteral).quasis[0].value.cooked
+  } else if (isTemplateLiteral(node) && node.expressions.length === 0) {
+    return node.quasis[0].value.cooked
   }
   return ''
 }
@@ -184,12 +216,12 @@ function findJSXElementWithStyleAtPosition(
     if (node.type === 'JSXElement') {
       const jsxElement = node as JSXElement
       const styleAttr = jsxElement.openingElement.attributes.find(
-        attr => attr.type === 'JSXAttribute' && attr.name.name === 'style'
-      ) as JSXAttribute | undefined
+        attr => isJSXAttribute(attr) && attr.name.name === 'style'
+      ) 
       
-      if (styleAttr?.value?.type === 'JSXExpressionContainer') {
+      if (isJSXExpressionContainer(styleAttr?.value)) {
         const expr = styleAttr.value.expression
-        if (expr.type === 'ObjectExpression') {
+        if (isObjectExpression(expr)) {
           return jsxElement
         }
       }
@@ -216,11 +248,20 @@ function extractStyles(
   objectExpr: ObjectExpression,
   sourceCode: string
 ): StyleExtractionResult {
-  const staticStyles: StyleProperty[] = []
+  const staticProperties: Array<StyleProperty> = []
   const dynamicProperties: Array<{ start: number; end: number; text: string }> = []
 
   for (const prop of objectExpr.properties) {
-    if (prop.type === 'Property') {
+    if (isSpreadElement(prop)) {
+      dynamicProperties.push({
+        start: prop.start!,
+        end: prop.end!,
+        text: sourceCode.slice(prop.start!, prop.end!)
+      })
+      continue;
+    }
+
+    if (isProperty(prop)) {
       // Skip computed properties
       if (prop.computed) {
         dynamicProperties.push({
@@ -233,9 +274,9 @@ function extractStyles(
 
       // Get property name
       let name: string
-      if (prop.key.type === 'Identifier') {
+      if (isIdentifier(prop.key)) {
         name = prop.key.name
-      } else if (prop.key.type === 'Literal' && typeof prop.key.value === 'string') {
+      } else if (isLiteral(prop.key) && typeof prop.key.value === 'string') {
         name = prop.key.value
       } else {
         dynamicProperties.push({
@@ -248,27 +289,22 @@ function extractStyles(
 
       // Check if value is static
       if (isStaticValue(prop.value)) {
-        staticStyles.push({
+        staticProperties.push({
           name,
           value: getStaticValue(prop.value)
         })
       } else {
+        console.log('this happens?')
         dynamicProperties.push({
           start: prop.start!,
           end: prop.end!,
           text: sourceCode.slice(prop.start!, prop.end!)
         })
       }
-    } else if (prop.type === 'SpreadElement') {
-      dynamicProperties.push({
-        start: prop.start!,
-        end: prop.end!,
-        text: sourceCode.slice(prop.start!, prop.end!)
-      })
-    }
+    } 
   }
 
-  return { staticStyles, dynamicProperties }
+  return { staticProperties, dynamicProperties }
 }
 
 /**********************************************************************************/
@@ -284,8 +320,6 @@ export function transformJsxStyleToClassName({ ast, sourceCode, offset, classNam
   debug('Source code:', sourceCode.substring(0, 100) + '...')
 
   try {
-    debug('AST provided, skipping parsing')
-
     // Find JSX element with style at position
     const jsxElement = findJSXElementWithStyleAtPosition(ast, offset)
     debug('Found JSX element:', !!jsxElement)
@@ -297,8 +331,8 @@ export function transformJsxStyleToClassName({ ast, sourceCode, offset, classNam
 
     // Find style attribute
     const styleAttr = openingElement.attributes.find(
-      attr => attr.type === 'JSXAttribute' && attr.name.name === 'style'
-    ) as JSXAttribute | undefined
+      attr => isJSXAttribute(attr) && attr.name.name === 'style'
+    )
     
     debug('Style attribute found:', !!styleAttr)
     if (!styleAttr?.value) return null
@@ -308,10 +342,10 @@ export function transformJsxStyleToClassName({ ast, sourceCode, offset, classNam
     
     const styleExpr = (styleAttr.value as JSXExpressionContainer).expression
     debug('Style expression type:', styleExpr.type)
-    if (styleExpr.type !== 'ObjectExpression') return null
+    if (!isObjectExpression(styleExpr)) return null
 
     // Extract styles
-    const { staticStyles, dynamicProperties } = extractStyles(styleExpr as ObjectExpression, sourceCode)
+    const { staticProperties: staticStyles, dynamicProperties } = extractStyles(styleExpr, sourceCode)
     debug('Extracted static styles:', staticStyles)
     debug('Dynamic properties count:', dynamicProperties.length)
     
