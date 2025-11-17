@@ -1,18 +1,18 @@
+import type { Node } from 'acorn'
 import * as fs from 'node:fs'
 import * as path from 'node:path'
+import { tsPlugin } from '@sveltejs/acorn-typescript'
+import { Parser } from 'acorn'
 import { defineExtension, useCommand } from 'reactive-vscode'
 import * as vscode from 'vscode'
 import { window, workspace, WorkspaceEdit } from 'vscode'
-import { Parser } from 'acorn'
-import { tsPlugin } from '@sveltejs/acorn-typescript'
-import type { Node } from 'acorn'
-
-const TypeScriptParser = Parser.extend(tsPlugin({ jsx: true }))
 import { classExists } from './utils/css-parser'
 import { getJsxElementNameAtPosition } from './utils/get-jsx-element-name-at-position'
 import { openCssFileAndScrollToClass } from './utils/open-css-file'
 import { generateUniqueClassName, stylesToCSS } from './utils/style-helpers'
 import { transformJsxStyleToClassName } from './utils/transform-jsx-style-to-class-name'
+
+const TypeScriptParser = Parser.extend(tsPlugin({ jsx: true }))
 
 const { activate, deactivate } = defineExtension(() => {
   // Helper to get configuration values
@@ -54,10 +54,10 @@ const { activate, deactivate } = defineExtension(() => {
     const ast = TypeScriptParser.parse(documentText, {
       ecmaVersion: 'latest' as any,
       sourceType: 'module',
-      locations: true
+      locations: true,
     }) as Node
 
-    // Get element name first if needed  
+    // Get element name first if needed
     const elementName = getJsxElementNameAtPosition(ast, offset)
     if (!elementName) {
       window.showErrorMessage('No JSX element found at cursor position')

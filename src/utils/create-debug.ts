@@ -3,6 +3,7 @@ export function createDebug(subject: string, enabled: boolean) {
     if (!enabled) {
       return
     }
+    // eslint-disable-next-line no-console
     console[options?.trace ? 'trace' : 'log'](
       `%c[${subject}]`,
       `color: grey;`,

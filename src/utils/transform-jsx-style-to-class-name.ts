@@ -1,6 +1,7 @@
 import type { Node } from 'acorn'
+import type { JSXElement, JSXExpressionContainer, ObjectExpression } from './acorn-utils'
+import { findNodeAtOffset, getStaticValue, isIdentifier, isJSXAttribute, isJSXExpressionContainer, isLiteral, isObjectExpression, isProperty, isSpreadElement, isStaticValue, isValidIdentifier, walk } from './acorn-utils'
 import { createDebug } from './create-debug'
-import { Nullable } from 'reactive-vscode'
 
 const debug = createDebug('transform-jsx-style-to-class-name', false)
 
@@ -24,201 +25,24 @@ export interface TransformInput {
   classAttribute: 'class' | 'className'
 }
 
-interface JSXElement extends Node {
-  type: 'JSXElement'
-  openingElement: JSXOpeningElement
-  closingElement: JSXClosingElement | null
-  children: Node[]
-}
-
-interface JSXOpeningElement extends Node {
-  type: 'JSXOpeningElement'
-  name: JSXIdentifier
-  attributes: JSXAttribute[]
-  selfClosing: boolean
-}
-
-interface JSXClosingElement extends Node {
-  type: 'JSXClosingElement'
-  name: JSXIdentifier
-}
-
-interface JSXIdentifier extends Node {
-  type: 'JSXIdentifier'
-  name: string
-}
-
-interface JSXAttribute extends Node {
-  type: 'JSXAttribute'
-  name: JSXIdentifier
-  value: JSXExpressionContainer | Literal | null
-}
-
-interface JSXExpressionContainer extends Node {
-  type: 'JSXExpressionContainer'
-  expression: Expression
-}
-
-interface ObjectExpression extends Node {
-  type: 'ObjectExpression'
-  properties: (Property | SpreadElement)[]
-}
-
-interface Property extends Node {
-  type: 'Property'
-  key: Identifier | Literal
-  value: Expression
-  computed: boolean
-  kind: 'init' | 'get' | 'set'
-}
-
-interface SpreadElement extends Node {
-  type: 'SpreadElement'
-  argument: Expression
-}
-
-interface Identifier extends Node {
-  type: 'Identifier'
-  name: string
-}
-
-interface Literal extends Node {
-  type: 'Literal'
-  value: string | number | boolean | null
-  raw: string
-}
-
-interface TemplateLiteral extends Node {
-  type: 'TemplateLiteral'
-  quasis: TemplateElement[]
-  expressions: Expression[]
-}
-
-interface TemplateElement extends Node {
-  type: 'TemplateElement'
-  value: {
-    raw: string
-    cooked: string
-  }
-  tail: boolean
-}
-
-type Expression = Identifier | Literal | ObjectExpression | TemplateLiteral | Node
-
-interface StyleExtractionResult {
+export interface StyleExtractionResult {
   staticProperties: StyleProperty[]
-  dynamicProperties: Array<{ start: number; end: number; text: string }>
-}
-
-/**********************************************************************************/
-/*                                                                                */
-/*                                      Guards                                    */
-/*                                                                                */
-/**********************************************************************************/
-
-function isValidIdentifier(str: string): boolean {
-  const identifierRegex = /^[a-z][a-z0-9]*$/i
-  return identifierRegex.test(str)
-}
-
-function isStaticValue(node: Expression): boolean {
-  return (
-    node.type === 'Literal' ||
-    (node.type === 'TemplateLiteral' && (node as TemplateLiteral).expressions.length === 0)
-  )
-}
-
-function isIdentifier(node: Nullable<Node>): node is Identifier{
-  return node?.type === 'Identifier'
-}
-
-function isLiteral(node: Nullable<Node>): node is Literal{
-  return node?.type === 'Literal'
-}
-
-function isTemplateLiteral(node: Nullable<Node>): node is TemplateLiteral{
-  return node?.type === 'TemplateLiteral'
-}
-
-function isProperty(node: Nullable<Node>): node is Property{
-  return node?.type === 'Property'
-}
-
-function isSpreadElement(node: Nullable<Node>): node is SpreadElement{
-  return node?.type === 'SpreadElement'
-}
-
-function isJSXExpressionContainer(node?: Nullable<Node>): node is JSXExpressionContainer {
-  return node?.type === 'JSXExpressionContainer'
-}
-function isJSXAttribute(node: Nullable<Node>): node is JSXAttribute {
-  return node?.type === 'JSXAttribute'
-}
-
-function isObjectExpression(node: Nullable<Node>): node is ObjectExpression {
-  return node?.type === 'ObjectExpression'
-}
-
-/**********************************************************************************/
-/*                                                                                */
-/*                                      Utils                                     */
-/*                                                                                */
-/**********************************************************************************/
-
-function getStaticValue(node: Expression): string {
-  if (isLiteral(node)) {
-    return String((node as Literal).value)
-  } else if (isTemplateLiteral(node) && node.expressions.length === 0) {
-    return node.quasis[0].value.cooked
-  }
-  return ''
-}
-
-function walk(node: Node, callback: (node: Node) => void) {
-  callback(node)
-  for (const key in node) {
-    const value = (node as any)[key]
-    if (value && typeof value === 'object') {
-      if (Array.isArray(value)) {
-        value.forEach(child => {
-          if (child && typeof child === 'object' && 'type' in child) {
-            walk(child, callback)
-          }
-        })
-      } else if ('type' in value) {
-        walk(value, callback)
-      }
-    }
-  }
-}
-
-function findNodeAtOffset(root: Node, offset: number): Node | null {
-  let found: Node | null = null
-  
-  walk(root, (node) => {
-    if (node.start! <= offset && offset <= node.end!) {
-      if (!found || (node.start! >= found.start! && node.end! <= found.end!)) {
-        found = node
-      }
-    }
-  })
-  
-  return found
+  dynamicProperties: Array<{ start: number, end: number, text: string }>
 }
 
 function findJSXElementWithStyleAtPosition(
   root: Node,
-  offset: number
+  offset: number,
 ): JSXElement | null {
   let node = findNodeAtOffset(root, offset)
-  
+
   while (node) {
     if (node.type === 'JSXElement') {
       const jsxElement = node as JSXElement
       const styleAttr = jsxElement.openingElement.attributes.find(
-        attr => isJSXAttribute(attr) && attr.name.name === 'style'
-      ) 
-      
+        attr => isJSXAttribute(attr) && attr.name.name === 'style',
+      )
+
       if (isJSXExpressionContainer(styleAttr?.value)) {
         const expr = styleAttr.value.expression
         if (isObjectExpression(expr)) {
@@ -226,7 +50,7 @@ function findJSXElementWithStyleAtPosition(
         }
       }
     }
-    
+
     // Move to parent
     let parent: Node | null = null
     walk(root, (n) => {
@@ -240,25 +64,25 @@ function findJSXElementWithStyleAtPosition(
     })
     node = parent
   }
-  
+
   return null
 }
 
 function extractStyles(
   objectExpr: ObjectExpression,
-  sourceCode: string
+  sourceCode: string,
 ): StyleExtractionResult {
   const staticProperties: Array<StyleProperty> = []
-  const dynamicProperties: Array<{ start: number; end: number; text: string }> = []
+  const dynamicProperties: Array<{ start: number, end: number, text: string }> = []
 
   for (const prop of objectExpr.properties) {
     if (isSpreadElement(prop)) {
       dynamicProperties.push({
         start: prop.start!,
         end: prop.end!,
-        text: sourceCode.slice(prop.start!, prop.end!)
+        text: sourceCode.slice(prop.start!, prop.end!),
       })
-      continue;
+      continue
     }
 
     if (isProperty(prop)) {
@@ -267,7 +91,7 @@ function extractStyles(
         dynamicProperties.push({
           start: prop.start!,
           end: prop.end!,
-          text: sourceCode.slice(prop.start!, prop.end!)
+          text: sourceCode.slice(prop.start!, prop.end!),
         })
         continue
       }
@@ -276,13 +100,15 @@ function extractStyles(
       let name: string
       if (isIdentifier(prop.key)) {
         name = prop.key.name
-      } else if (isLiteral(prop.key) && typeof prop.key.value === 'string') {
+      }
+      else if (isLiteral(prop.key) && typeof prop.key.value === 'string') {
         name = prop.key.value
-      } else {
+      }
+      else {
         dynamicProperties.push({
           start: prop.start!,
           end: prop.end!,
-          text: sourceCode.slice(prop.start!, prop.end!)
+          text: sourceCode.slice(prop.start!, prop.end!),
         })
         continue
       }
@@ -291,17 +117,17 @@ function extractStyles(
       if (isStaticValue(prop.value)) {
         staticProperties.push({
           name,
-          value: getStaticValue(prop.value)
+          value: getStaticValue(prop.value),
         })
-      } else {
-        console.log('this happens?')
+      }
+      else {
         dynamicProperties.push({
           start: prop.start!,
           end: prop.end!,
-          text: sourceCode.slice(prop.start!, prop.end!)
+          text: sourceCode.slice(prop.start!, prop.end!),
         })
       }
-    } 
+    }
   }
 
   return { staticProperties, dynamicProperties }
@@ -314,16 +140,16 @@ function extractStyles(
 /**********************************************************************************/
 
 export function transformJsxStyleToClassName({ ast, sourceCode, offset, className, classAttribute }: TransformInput): TransformResult | null {
-
   debug('=== Transform JSX Style to ClassName ===')
   debug('Input:', { offset, className, classAttribute })
-  debug('Source code:', sourceCode.substring(0, 100) + '...')
+  debug('Source code:', `${sourceCode.substring(0, 100)}...`)
 
   try {
     // Find JSX element with style at position
     const jsxElement = findJSXElementWithStyleAtPosition(ast, offset)
     debug('Found JSX element:', !!jsxElement)
-    if (!jsxElement) return null
+    if (!jsxElement)
+      return null
 
     const openingElement = jsxElement.openingElement
     const elementName = openingElement.name.name
@@ -331,37 +157,40 @@ export function transformJsxStyleToClassName({ ast, sourceCode, offset, classNam
 
     // Find style attribute
     const styleAttr = openingElement.attributes.find(
-      attr => isJSXAttribute(attr) && attr.name.name === 'style'
+      attr => isJSXAttribute(attr) && attr.name.name === 'style',
     )
-    
+
     debug('Style attribute found:', !!styleAttr)
-    if (!styleAttr?.value) return null
+    if (!styleAttr?.value)
+      return null
     debug('Style value type:', styleAttr.value.type)
-    
-    if (styleAttr.value.type !== 'JSXExpressionContainer') return null
-    
+
+    if (styleAttr.value.type !== 'JSXExpressionContainer')
+      return null
+
     const styleExpr = (styleAttr.value as JSXExpressionContainer).expression
     debug('Style expression type:', styleExpr.type)
-    if (!isObjectExpression(styleExpr)) return null
+    if (!isObjectExpression(styleExpr))
+      return null
 
     // Extract styles
     const { staticProperties: staticStyles, dynamicProperties } = extractStyles(styleExpr, sourceCode)
     debug('Extracted static styles:', staticStyles)
     debug('Dynamic properties count:', dynamicProperties.length)
-    
+
     // If no static styles, return result with no transformations
     if (staticStyles.length === 0) {
       return {
         transformedCode: sourceCode,
         extractedStyles: [],
         elementName,
-        className
+        className,
       }
     }
 
     // Build the transformed code
     let transformedCode = sourceCode
-    const edits: Array<{ start: number; end: number; replacement: string }> = []
+    const edits: Array<{ start: number, end: number, replacement: string }> = []
 
     debug('Style attribute position:', `${styleAttr.start}-${styleAttr.end}`)
     debug('Style attribute text:', sourceCode.slice(styleAttr.start!, styleAttr.end!))
@@ -377,45 +206,47 @@ export function transformJsxStyleToClassName({ ast, sourceCode, offset, classNam
     if (beforeStyle === ' ') {
       removeStart = styleAttr.start! - 1
     }
-    
+
     if (dynamicProperties.length > 0) {
       // Replace with className and updated style
       const dynamicPropsText = dynamicProperties.map(p => p.text).join(', ')
       edits.push({
         start: removeStart,
         end: styleAttr.end!,
-        replacement: ` ${classAttribute}={${classNameValue}} style={{ ${dynamicPropsText} }}`
+        replacement: ` ${classAttribute}={${classNameValue}} style={{ ${dynamicPropsText} }}`,
       })
-    } else {
+    }
+    else {
       // Replace with just className
       edits.push({
         start: removeStart,
         end: styleAttr.end!,
-        replacement: ` ${classAttribute}={${classNameValue}}`
+        replacement: ` ${classAttribute}={${classNameValue}}`,
       })
     }
 
     // Apply edits in reverse order to maintain positions
     edits.sort((a, b) => b.start - a.start)
     debug('Edits to apply:', edits)
-    
+
     for (const edit of edits) {
       debug(`Applying edit at ${edit.start}-${edit.end}: "${edit.replacement}"`)
-      transformedCode = 
-        transformedCode.slice(0, edit.start) + 
-        edit.replacement + 
-        transformedCode.slice(edit.end)
+      transformedCode
+        = transformedCode.slice(0, edit.start)
+          + edit.replacement
+          + transformedCode.slice(edit.end)
     }
 
-    debug('Final transformed code:', transformedCode.substring(0, 200) + '...')
+    debug('Final transformed code:', `${transformedCode.substring(0, 200)}...`)
 
     return {
       transformedCode,
       extractedStyles: staticStyles,
       elementName,
-      className
+      className,
     }
-  } catch (error) {
+  }
+  catch (error) {
     console.error('Error transforming JSX:', error)
     return null
   }
