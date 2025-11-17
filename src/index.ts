@@ -60,7 +60,7 @@ const { activate, deactivate } = defineExtension(() => {
     let className: string | undefined
     const attempts = 0
 
-    while (!className?.trim() || !classExists(cssContent, className)) {
+    while (!className?.trim() || classExists(cssContent, className)) {
       const promptMessage = attempts === 0
         ? 'Enter class name:'
         : `Class "${className}" already exists. Try a different name:`
