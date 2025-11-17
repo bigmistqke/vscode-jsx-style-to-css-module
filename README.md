@@ -14,6 +14,15 @@ Extension that allows to improve DX around refactoring code from using inlined s
 
 The extension provides two commands:
 
+<!-- commands -->
+
+| Command                            | Title                                                       |
+| ---------------------------------- | ----------------------------------------------------------- |
+| `jsx-style-to-css-module`          | Refactor: Extract Inline Styles to CSS Module               |
+| `jsx-style-to-css-module-and-open` | Refactor: Extract Inline Styles to CSS Module and Open File |
+
+<!-- commands -->
+
 ### 1. Extract Inline Styles to CSS Module
 1. Place your cursor inside a JSX/TSX element that has inline styles
 2. Open command palette and use action "Refactor: Extract Inline Styles to CSS Module"
@@ -52,6 +61,15 @@ The extension intelligently handles different types of styles:
 ## Configuration
 
 Configure these in your workspace or user settings:
+
+<!-- configs -->
+
+| Key                                         | Description                                                                                     | Type     | Default        |
+| ------------------------------------------- | ----------------------------------------------------------------------------------------------- | -------- | -------------- |
+| `jsx-style-to-css-module.classAttribute`    | The attribute name to use for CSS classes (className for React, class for Solid)                | `string` | `"class"`      |
+| `jsx-style-to-css-module.cssPropertyNaming` | The naming convention for CSS properties (kebab-case for standard CSS, camelCase for CSS-in-JS) | `string` | `"kebab-case"` |
+
+<!-- configs -->
 
 - `style-to-css-module.classAttribute`: Choose between `"className"` (React) or `"class"` (Solid) - **Default: `"className"`**
 - `style-to-css-module.cssPropertyNaming`: Choose between `"kebab-case"` (standard CSS) or `"camelCase"` (CSS-in-JS) - **Default: `"kebab-case"`**
