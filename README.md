@@ -73,14 +73,14 @@ When you extract styles from an element that already has a `className` or `class
 
 **After:**
 ```jsx
-<div className="existing-class" className={styles["new-styles"]}>
+<div className="existing-class" className={styles['new-styles']}>
   Content
 </div>
 ```
 
 The browser will use the last `className` attribute, so you'll need to manually merge them if desired:
 ```jsx
-<div className={`existing-class ${styles["new-styles"]}`}>
+<div className={`existing-class ${styles['new-styles']}`}>
   Content
 </div>
 ```

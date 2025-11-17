@@ -88,8 +88,7 @@
     "@sveltejs/acorn-typescript": "^1.0.7",
     "acorn": "^8.15.0",
     "postcss": "^8.5.6",
-    "postcss-selector-parser": "^7.1.0",
-    "typescript": "^5.9.3"
+    "postcss-selector-parser": "^7.1.0"
   },
   "devDependencies": {
     "@antfu/eslint-config": "^4.19.0",

@@ -1,8 +1,8 @@
-import type { TransformInput } from '../src/utils/transform-jsx-style-to-class-name'
-import { describe, expect, it } from 'vitest'
-import { Parser } from 'acorn'
-import { tsPlugin } from '@sveltejs/acorn-typescript'
 import type { Node } from 'acorn'
+import type { TransformInput } from '../src/utils/transform-jsx-style-to-class-name'
+import { tsPlugin } from '@sveltejs/acorn-typescript'
+import { Parser } from 'acorn'
+import { describe, expect, it } from 'vitest'
 import {
   transformJsxStyleToClassName,
 } from '../src/utils/transform-jsx-style-to-class-name'
@@ -11,7 +11,6 @@ const TypeScriptParser = Parser.extend(tsPlugin({ jsx: true }))
 
 describe('transformJsxStyleToClassName', () => {
   it('should transform JSX element with static styles', () => {
-    const fileName = 'test.tsx'
     const fileContent = `
 import React from 'react'
 
@@ -28,7 +27,7 @@ export default Component
     const ast = TypeScriptParser.parse(fileContent, {
       ecmaVersion: 'latest' as any,
       sourceType: 'module',
-      locations: true
+      locations: true,
     }) as Node
 
     const input: TransformInput = {
@@ -52,7 +51,6 @@ export default Component
   })
 
   it('should handle self-closing JSX elements', () => {
-    const fileName = 'test.tsx'
     const fileContent = `
 import React from 'react'
 
@@ -65,7 +63,7 @@ export default Component
     const ast = TypeScriptParser.parse(fileContent, {
       ecmaVersion: 'latest' as any,
       sourceType: 'module',
-      locations: true
+      locations: true,
     }) as Node
 
     const input: TransformInput = {
@@ -87,7 +85,6 @@ export default Component
   })
 
   it('should handle mixed static and dynamic styles', () => {
-    const fileName = 'test.tsx'
     const fileContent = `
 import React, { useState } from 'react'
 
@@ -112,7 +109,7 @@ export default Component
     const ast = TypeScriptParser.parse(fileContent, {
       ecmaVersion: 'latest' as any,
       sourceType: 'module',
-      locations: true
+      locations: true,
     }) as Node
 
     const input: TransformInput = {
@@ -137,7 +134,6 @@ export default Component
   })
 
   it('should handle spread properties', () => {
-    const fileName = 'test.tsx'
     const fileContent = `
 import React from 'react'
 
@@ -161,7 +157,7 @@ export default Component
     const ast = TypeScriptParser.parse(fileContent, {
       ecmaVersion: 'latest' as any,
       sourceType: 'module',
-      locations: true
+      locations: true,
     }) as Node
 
     const input: TransformInput = {
@@ -185,7 +181,6 @@ export default Component
   })
 
   it('should handle Solid.js with class attribute and kebab-case', () => {
-    const fileName = 'test.tsx'
     const fileContent = `
 import { Component } from 'solid-js'
 
@@ -202,7 +197,7 @@ export default TestComponent
     const ast = TypeScriptParser.parse(fileContent, {
       ecmaVersion: 'latest' as any,
       sourceType: 'module',
-      locations: true
+      locations: true,
     }) as Node
 
     const input: TransformInput = {
@@ -224,7 +219,6 @@ export default TestComponent
   })
 
   it('should handle template literals', () => {
-    const fileName = 'test.tsx'
     const fileContent = `
 import React from 'react'
 
@@ -246,7 +240,7 @@ export default Component
     const ast = TypeScriptParser.parse(fileContent, {
       ecmaVersion: 'latest' as any,
       sourceType: 'module',
-      locations: true
+      locations: true,
     }) as Node
 
     const input: TransformInput = {
@@ -267,7 +261,6 @@ export default Component
   })
 
   it('should handle computed property names as dynamic', () => {
-    const fileName = 'test.tsx'
     const fileContent = `
 import React from 'react'
 
@@ -288,7 +281,7 @@ export default Component
     const ast = TypeScriptParser.parse(fileContent, {
       ecmaVersion: 'latest' as any,
       sourceType: 'module',
-      locations: true
+      locations: true,
     }) as Node
 
     const input: TransformInput = {
@@ -311,7 +304,6 @@ export default Component
   })
 
   it('should handle numeric literals', () => {
-    const fileName = 'test.tsx'
     const fileContent = `
 import React from 'react'
 
@@ -332,7 +324,7 @@ export default Component
     const ast = TypeScriptParser.parse(fileContent, {
       ecmaVersion: 'latest' as any,
       sourceType: 'module',
-      locations: true
+      locations: true,
     }) as Node
 
     const input: TransformInput = {
@@ -353,7 +345,6 @@ export default Component
   })
 
   it('should handle boolean keywords', () => {
-    const fileName = 'test.tsx'
     const fileContent = `
 import React from 'react'
 
@@ -373,7 +364,7 @@ export default Component
     const ast = TypeScriptParser.parse(fileContent, {
       ecmaVersion: 'latest' as any,
       sourceType: 'module',
-      locations: true
+      locations: true,
     }) as Node
 
     const input: TransformInput = {
@@ -392,7 +383,6 @@ export default Component
   })
 
   it('should return null when no JSX element at position', () => {
-    const fileName = 'test.tsx'
     const fileContent = `
 import React from 'react'
 
@@ -402,7 +392,7 @@ const x = 5
     const ast = TypeScriptParser.parse(fileContent, {
       ecmaVersion: 'latest' as any,
       sourceType: 'module',
-      locations: true
+      locations: true,
     }) as Node
 
     const input: TransformInput = {
@@ -418,7 +408,6 @@ const x = 5
   })
 
   it('should return null when JSX element has no style prop', () => {
-    const fileName = 'test.tsx'
     const fileContent = `
 import React from 'react'
 
@@ -431,7 +420,7 @@ export default Component
     const ast = TypeScriptParser.parse(fileContent, {
       ecmaVersion: 'latest' as any,
       sourceType: 'module',
-      locations: true
+      locations: true,
     }) as Node
 
     const input: TransformInput = {
@@ -447,7 +436,6 @@ export default Component
   })
 
   it('should handle JSX fragment correctly', () => {
-    const fileName = 'test.tsx'
     const fileContent = `
 import React from 'react'
 
@@ -465,7 +453,7 @@ export default Component
     const ast = TypeScriptParser.parse(fileContent, {
       ecmaVersion: 'latest' as any,
       sourceType: 'module',
-      locations: true
+      locations: true,
     }) as Node
 
     const input: TransformInput = {
@@ -482,7 +470,6 @@ export default Component
   })
 
   it('should handle .jsx file extension', () => {
-    const fileName = 'test.jsx'
     const fileContent = `
 const Component = () => {
 return <div style={{ backgroundColor: 'yellow' }}>JSX file</div>
@@ -493,7 +480,7 @@ export default Component
     const ast = TypeScriptParser.parse(fileContent, {
       ecmaVersion: 'latest' as any,
       sourceType: 'module',
-      locations: true
+      locations: true,
     }) as Node
 
     const input: TransformInput = {
@@ -510,7 +497,6 @@ export default Component
   })
 
   it('should handle only dynamic styles without creating class', () => {
-    const fileName = 'test.tsx'
     const fileContent = `
 import React from 'react'
 
@@ -532,7 +518,7 @@ export default Component
     const ast = TypeScriptParser.parse(fileContent, {
       ecmaVersion: 'latest' as any,
       sourceType: 'module',
-      locations: true
+      locations: true,
     }) as Node
 
     const input: TransformInput = {
@@ -552,7 +538,6 @@ export default Component
   })
 
   it('should handle style prop with no initializer', () => {
-    const fileName = 'test.tsx'
     const fileContent = `
 import React from 'react'
 
@@ -565,7 +550,7 @@ export default Component
     const ast = TypeScriptParser.parse(fileContent, {
       ecmaVersion: 'latest' as any,
       sourceType: 'module',
-      locations: true
+      locations: true,
     }) as Node
 
     const input: TransformInput = {
@@ -581,7 +566,6 @@ export default Component
   })
 
   it('should create separate className when element already has className', () => {
-    const fileName = 'test.tsx'
     const fileContent = `
 import React from 'react'
 
@@ -598,7 +582,7 @@ export default Component
     const ast = TypeScriptParser.parse(fileContent, {
       ecmaVersion: 'latest' as any,
       sourceType: 'module',
-      locations: true
+      locations: true,
     }) as Node
 
     const input: TransformInput = {
@@ -622,7 +606,6 @@ export default Component
   })
 
   it('should create separate class when element already has class (Solid.js)', () => {
-    const fileName = 'test.tsx'
     const fileContent = `
 import { Component } from 'solid-js'
 
@@ -639,7 +622,7 @@ export default TestComponent
     const ast = TypeScriptParser.parse(fileContent, {
       ecmaVersion: 'latest' as any,
       sourceType: 'module',
-      locations: true
+      locations: true,
     }) as Node
 
     const input: TransformInput = {
@@ -663,7 +646,6 @@ export default TestComponent
   })
 
   it('should handle mixed dynamic and static styles with existing className', () => {
-    const fileName = 'test.tsx'
     const fileContent = `
 import React from 'react'
 
@@ -686,7 +668,7 @@ export default Component
     const ast = TypeScriptParser.parse(fileContent, {
       ecmaVersion: 'latest' as any,
       sourceType: 'module',
-      locations: true
+      locations: true,
     }) as Node
 
     const input: TransformInput = {
