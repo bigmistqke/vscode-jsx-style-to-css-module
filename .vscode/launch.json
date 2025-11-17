@@ -18,7 +18,7 @@
       "type": "extensionHost",
       "request": "launch",
       "args": [
-        "${workspaceFolder}/playground/react-app",
+        "${workspaceFolder}/playground/react",
         "--extensionDevelopmentPath=${workspaceFolder}"
       ],
       "outFiles": [
@@ -31,7 +31,7 @@
       "type": "extensionHost",
       "request": "launch",
       "args": [
-        "${workspaceFolder}/playground/solid-app",
+        "${workspaceFolder}/playground/solid",
         "--extensionDevelopmentPath=${workspaceFolder}"
       ],
       "outFiles": [
