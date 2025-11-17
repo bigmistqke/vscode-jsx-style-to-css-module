@@ -74,13 +74,13 @@
   "scripts": {
     "build": "tsup",
     "dev": "pnpm build --watch --sourcemap",
-    "update": "vscode-ext-gen --output src/generated/meta.ts",
     "lint": "eslint .",
     "test": "vitest run",
     "test:watch": "vitest --watch",
     "typecheck": "tsc --noEmit",
     "vscode:prepublish": "pnpm build",
     "release": "bumpp",
+    "ext:generate": "vscode-ext-gen --output src/generated/meta.ts",
     "ext:package": "vsce package --no-dependencies",
     "ext:publish": "vsce publish --no-dependencies && ovsx publish --no-dependencies"
   },

@@ -34,11 +34,14 @@ jobs:
 
       - run: pnpm install
 
+      - name: Generate Metadata
+        run: pnpm ext:generate
+
       - name: Generate .vsix file
-        run: pnpm package
+        run: pnpm ext:package
 
       - name: Publish Extension
-        run: npx vsxpub --no-dependencies
+        run: pnpm ext:publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VSCE_PAT: ${{secrets.VSCE_PAT}}
