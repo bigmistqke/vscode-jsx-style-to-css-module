@@ -21,7 +21,8 @@ export function parseCSSFile(filePath: string): CSSClass[] {
   try {
     const cssContent = fs.readFileSync(filePath, 'utf8')
     return parseCSSContent(cssContent)
-  } catch (error) {
+  }
+  catch (error) {
     console.error('Error reading CSS file:', error)
     return []
   }
@@ -41,7 +42,7 @@ export function parseCSSContent(cssContent: string): CSSClass[] {
       selectorParser((selectors) => {
         selectors.walkClasses((classNode) => {
           const className = classNode.value
-          
+
           if (rule.source?.start && rule.source?.end) {
             classes.push({
               name: className,
@@ -54,7 +55,8 @@ export function parseCSSContent(cssContent: string): CSSClass[] {
         })
       }).processSync(rule.selector)
     })
-  } catch (error) {
+  }
+  catch (error) {
     console.error('Error parsing CSS content:', error)
   }
 

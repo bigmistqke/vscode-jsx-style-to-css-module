@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { createDefaultSourceFile } from '../src/utils/create-default-source-file'
 import { getJsxElementNameAtPosition } from '../src/utils/get-jsx-element-name-at-position'
 

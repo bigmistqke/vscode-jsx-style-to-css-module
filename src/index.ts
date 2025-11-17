@@ -58,7 +58,7 @@ const { activate, deactivate } = defineExtension(() => {
 
     // Prompt for class name with validation
     let className: string | undefined
-    let attempts = 0
+    const attempts = 0
 
     while (!className?.trim() || !classExists(cssContent, className)) {
       const promptMessage = attempts === 0
@@ -71,7 +71,6 @@ const { activate, deactivate } = defineExtension(() => {
         value: attempts > 0 ? '' : undefined, // Clear previous input on retry
       })
 
-      
       // User cancelled
       if (className === undefined) {
         window.showInformationMessage('Style extraction cancelled')
@@ -87,7 +86,6 @@ const { activate, deactivate } = defineExtension(() => {
         className = generateUniqueClassName(cssContent, elementName)
       }
     }
-
 
     // Transform the AST
     const transformResult = transformJsxStyleToClassName({

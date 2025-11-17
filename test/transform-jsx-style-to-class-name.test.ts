@@ -1,8 +1,9 @@
+import type { TransformInput } from '../src/utils/transform-jsx-style-to-class-name'
 import { describe, expect, it } from 'vitest'
 import { createDefaultSourceFile } from '../src/utils/create-default-source-file'
 import {
+
   transformJsxStyleToClassName,
-  type TransformInput,
 } from '../src/utils/transform-jsx-style-to-class-name'
 
 describe('ast-transformer', () => {
@@ -223,7 +224,8 @@ export default Component
       expect(result!.extractedStyles).toEqual([{ name: 'fontSize', value: '16px' }])
       // Should keep template literal in style prop
       expect(result!.transformedCode).toContain('style={')
-      expect(result!.transformedCode).toContain('color: `hsl(${size * 10}, 70%, 50%)`')
+      // eslint-disable-next-line no-template-curly-in-string
+      expect(result!.transformedCode).toContain('color: \`hsl(${size * 10}, 70%, 50%)\`')
     })
 
     it('should handle computed property names as dynamic', () => {
@@ -261,7 +263,7 @@ export default Component
       ])
       // Should keep computed property name in style prop
       expect(result!.transformedCode).toContain('style={')
-      expect(result!.transformedCode).toContain("['padding']: '10px'")
+      expect(result!.transformedCode).toContain('[\'padding\']: \'10px\'')
     })
 
     it('should handle numeric literals', () => {

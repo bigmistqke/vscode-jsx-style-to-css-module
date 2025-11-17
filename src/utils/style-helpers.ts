@@ -50,21 +50,21 @@ export function classExistsInCSS(cssContent: string, className: string): boolean
 }
 
 export function generateUniqueClassName(
-  cssContent: string, 
-  tagName?: string, 
-  maxRetries: number = 100
+  cssContent: string,
+  tagName?: string,
+  maxRetries: number = 100,
 ) {
   let attempts = 0
   let className = generateRandomClassName(tagName)
-  
+
   while (classExistsInCSS(cssContent, className) && attempts < maxRetries) {
     className = generateRandomClassName(tagName)
     attempts++
   }
-  
+
   if (attempts >= maxRetries) {
     throw new Error('Max retries generating unique class name')
   }
-  
+
   return className
 }

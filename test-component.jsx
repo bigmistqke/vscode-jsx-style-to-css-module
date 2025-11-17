@@ -1,6 +1,4 @@
-import React from 'react'
-
-const TestComponent = () => {
+function TestComponent() {
   return (
     <div style={{ backgroundColor: 'blue', padding: '20px', marginTop: '10px' }}>
       <h1 style={{ fontSize: '24px', color: 'white' }}>Test Component</h1>

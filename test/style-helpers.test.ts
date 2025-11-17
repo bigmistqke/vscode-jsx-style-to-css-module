@@ -63,7 +63,7 @@ describe('style-helpers', () => {
     })
 
     it('should handle single quotes', () => {
-      const input = "backgroundColor: 'blue', color: 'white'"
+      const input = 'backgroundColor: \'blue\', color: \'white\''
       const expected = {
         backgroundColor: 'blue',
         color: 'white',
@@ -175,10 +175,10 @@ describe('style-helpers', () => {
     it('should generate class name with tag name prefix when provided', () => {
       const className = generateRandomClassName('div')
       expect(className).toMatch(/^div-\d{1,3}$/)
-      
+
       const buttonClass = generateRandomClassName('button')
       expect(buttonClass).toMatch(/^button-\d{1,3}$/)
-      
+
       const h1Class = generateRandomClassName('h1')
       expect(h1Class).toMatch(/^h1-\d{1,3}$/)
     })
@@ -195,7 +195,7 @@ describe('style-helpers', () => {
     it('should generate numbers between 0 and 999', () => {
       for (let i = 0; i < 20; i++) {
         const className = generateRandomClassName('test')
-        const num = parseInt(className.replace('test-', ''))
+        const num = Number.parseInt(className.replace('test-', ''))
         expect(num).toBeGreaterThanOrEqual(0)
         expect(num).toBeLessThan(1000)
       }
@@ -233,7 +233,7 @@ describe('style-helpers', () => {
     it('should generate new name when conflicts exist', () => {
       // Mock CSS with some existing classes
       const css = `.div-100 { color: red; }\n.div-200 { margin: 10px; }`
-      
+
       // Generate multiple class names to ensure we don't get conflicts
       const classNames = new Set()
       for (let i = 0; i < 10; i++) {
@@ -242,7 +242,7 @@ describe('style-helpers', () => {
         expect(className).not.toBe('div-200')
         classNames.add(className)
       }
-      
+
       // Check they're all unique
       expect(classNames.size).toBe(10)
     })
@@ -253,7 +253,7 @@ describe('style-helpers', () => {
       for (let i = 0; i < 1000; i++) {
         css += `.test-${i} { color: red; }\n`
       }
-      
+
       expect(() => generateUniqueClassName(css, 'test', 10)).toThrow('Max retries generating unique class name')
     })
 

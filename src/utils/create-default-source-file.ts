@@ -1,6 +1,7 @@
-import { Project, SourceFile } from 'ts-morph'
+import type { SourceFile } from 'ts-morph'
+import * as path from 'node:path'
+import { Project } from 'ts-morph'
 import * as ts from 'typescript'
-import * as path from 'path'
 
 /**
  * Create a ts-morph source file from content using project's tsconfig
@@ -54,7 +55,8 @@ function getCompilerOptions(fileName: string): ts.CompilerOptions {
     }
 
     return parsedCommandLine.options
-  } catch (error) {
+  }
+  catch (error) {
     console.warn('Error getting compiler options from tsconfig.json:', error)
     return getDefaultCompilerOptions(fileName)
   }

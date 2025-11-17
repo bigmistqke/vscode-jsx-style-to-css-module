@@ -1,10 +1,12 @@
+import type {
+  JsxAttribute,
+  JsxElement,
+  JsxSelfClosingElement,
+  SourceFile,
+} from 'ts-morph'
 import {
   Node,
   SyntaxKind,
-  JsxAttribute,
-  SourceFile,
-  JsxElement,
-  JsxSelfClosingElement,
 } from 'ts-morph'
 
 export interface StyleProperty {
@@ -44,7 +46,7 @@ interface StyleExtractionResult {
 function isValidIdentifier(str: string): boolean {
   // 1. Only alphanumeric characters
   // 2. Not start with a number
-  const identifierRegex = /^[a-zA-Z][a-zA-Z0-9]*$/
+  const identifierRegex = /^[a-z][a-z0-9]*$/i
 
   return identifierRegex.test(str)
 }
@@ -57,7 +59,8 @@ function findJsxElementWithStyleAtPosition(
   offset: number,
 ): JsxElement | JsxSelfClosingElement | null {
   const node = sourceFile.getDescendantAtPos(offset)
-  if (!node) return null
+  if (!node)
+    return null
 
   // Walk up the tree to find JSX element with style attribute
   let current: Node | undefined = node
@@ -111,9 +114,11 @@ function extractStyles(objectLiteral: Node): StyleExtractionResult {
       let name: string
       if (Node.isIdentifier(nameNode)) {
         name = nameNode.getText()
-      } else if (Node.isStringLiteral(nameNode)) {
+      }
+      else if (Node.isStringLiteral(nameNode)) {
         name = nameNode.getLiteralValue()
-      } else {
+      }
+      else {
         name = prop.getName()
       }
 
@@ -122,13 +127,16 @@ function extractStyles(objectLiteral: Node): StyleExtractionResult {
           name,
           value: getStaticValue(initializer),
         })
-      } else {
+      }
+      else {
         dynamicProperties.push(prop)
       }
-    } else if (Node.isSpreadAssignment(prop)) {
+    }
+    else if (Node.isSpreadAssignment(prop)) {
       // Spreads are always dynamic
       dynamicProperties.push(prop)
-    } else {
+    }
+    else {
       // Other property types are dynamic
       dynamicProperties.push(prop)
     }
@@ -146,11 +154,11 @@ function extractStyles(objectLiteral: Node): StyleExtractionResult {
  */
 function isStaticValue(node: Node): boolean {
   return (
-    Node.isStringLiteral(node) ||
-    Node.isNumericLiteral(node) ||
-    node.getKind() === SyntaxKind.TrueKeyword ||
-    node.getKind() === SyntaxKind.FalseKeyword ||
-    Node.isNoSubstitutionTemplateLiteral(node)
+    Node.isStringLiteral(node)
+    || Node.isNumericLiteral(node)
+    || node.getKind() === SyntaxKind.TrueKeyword
+    || node.getKind() === SyntaxKind.FalseKeyword
+    || Node.isNoSubstitutionTemplateLiteral(node)
   )
 }
 
@@ -160,9 +168,11 @@ function isStaticValue(node: Node): boolean {
 function getStaticValue(node: Node): string {
   if (Node.isStringLiteral(node)) {
     return node.getLiteralValue()
-  } else if (Node.isNumericLiteral(node)) {
+  }
+  else if (Node.isNumericLiteral(node)) {
     return node.getLiteralValue().toString()
-  } else if (Node.isNoSubstitutionTemplateLiteral(node)) {
+  }
+  else if (Node.isNoSubstitutionTemplateLiteral(node)) {
     // Remove backticks
     return node.getText().slice(1, -1)
   }
@@ -184,24 +194,27 @@ export function transformJsxStyleToClassName(input: TransformInput): TransformRe
   try {
     // Find JSX element at position
     const jsxElement = findJsxElementWithStyleAtPosition(sourceFile, offset)
-    if (!jsxElement) return null
+    if (!jsxElement)
+      return null
 
     // Get the opening element
-    const openingElement =
-      jsxElement.getKind() === SyntaxKind.JsxElement
+    const openingElement
+      = jsxElement.getKind() === SyntaxKind.JsxElement
         ? jsxElement.asKindOrThrow(SyntaxKind.JsxElement).getOpeningElement()
         : jsxElement.asKindOrThrow(SyntaxKind.JsxSelfClosingElement)
 
     // Find style attribute
     const styleAttr = openingElement.getAttribute('style') as JsxAttribute | undefined
-    if (!styleAttr) return null
+    if (!styleAttr)
+      return null
 
     // Get style object literal
     const styleExpression = styleAttr.getInitializer()?.asKind(SyntaxKind.JsxExpression)
     const objectLiteral = styleExpression
       ?.getExpression()
       ?.asKind(SyntaxKind.ObjectLiteralExpression)
-    if (!objectLiteral) return null
+    if (!objectLiteral)
+      return null
 
     // Extract styles
     const { staticStyles, dynamicProperties } = extractStyles(objectLiteral)
@@ -230,13 +243,16 @@ export function transformJsxStyleToClassName(input: TransformInput): TransformRe
           if (existingValue.startsWith('{') && existingValue.endsWith('}')) {
             const inner = existingValue.slice(1, -1)
             existingClassAttr.setInitializer(`{\`\${${inner}} \${${classNameValue}}\`}`)
-          } else {
+          }
+          else {
             existingClassAttr.setInitializer(`{${classNameValue}}`)
           }
-        } else {
+        }
+        else {
           existingClassAttr.setInitializer(`{${classNameValue}}`)
         }
-      } else {
+      }
+      else {
         // Add new className attribute
         openingElement.addAttribute({
           name: classAttribute,
@@ -250,7 +266,8 @@ export function transformJsxStyleToClassName(input: TransformInput): TransformRe
       // Keep only dynamic styles
       const dynamicPropsText = dynamicProperties.map(prop => prop.getText()).join(', ')
       styleAttr.setInitializer(`{{ ${dynamicPropsText} }}`)
-    } else {
+    }
+    else {
       // Remove style attribute completely
       styleAttr.remove()
     }
@@ -261,7 +278,8 @@ export function transformJsxStyleToClassName(input: TransformInput): TransformRe
       elementName,
       className,
     }
-  } catch (error) {
+  }
+  catch (error) {
     console.error('Error transforming JSX:', error)
     return null
   }
