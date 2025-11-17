@@ -59,9 +59,8 @@ const { activate, deactivate } = defineExtension(() => {
     // Prompt for class name with validation
     let className: string | undefined
     let attempts = 0
-    const maxAttempts = 10
 
-    while (attempts < maxAttempts) {
+    while (!className?.trim() || !classExists(cssContent, className)) {
       const promptMessage = attempts === 0
         ? 'Enter class name:'
         : `Class "${className}" already exists. Try a different name:`
@@ -72,31 +71,23 @@ const { activate, deactivate } = defineExtension(() => {
         value: attempts > 0 ? '' : undefined, // Clear previous input on retry
       })
 
+      
       // User cancelled
       if (className === undefined) {
         window.showInformationMessage('Style extraction cancelled')
         return
       }
 
-      // User wants random name
-      if (!className) {
+      // Trim whitespace from start and end
+      className = className.trim()
+
+      // If trimmed class-name is empty string
+      // we create a unique class-name
+      if (className === '') {
         className = generateUniqueClassName(cssContent, elementName)
-        break
       }
-
-      // Check if class name already exists
-      if (!classExists(cssContent, className)) {
-        break
-      }
-
-      attempts++
     }
 
-    // If we still don't have a unique name after max attempts, generate one
-    if (attempts >= maxAttempts) {
-      className = generateUniqueClassName(cssContent, elementName)
-      window.showWarningMessage(`Generated unique name "${className}" after multiple conflicts`)
-    }
 
     // Transform the AST
     const transformResult = transformJsxStyleToClassName({
