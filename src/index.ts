@@ -3,7 +3,11 @@ import * as path from 'node:path'
 import { defineExtension, useCommand } from 'reactive-vscode'
 import * as vscode from 'vscode'
 import { window, workspace, WorkspaceEdit } from 'vscode'
-import { createDefaultSourceFile } from '../src/utils/create-default-source-file'
+import { Parser } from 'acorn'
+import { tsPlugin } from '@sveltejs/acorn-typescript'
+import type { Node } from 'acorn'
+
+const TypeScriptParser = Parser.extend(tsPlugin({ jsx: true }))
 import { classExists } from './utils/css-parser'
 import { getJsxElementNameAtPosition } from './utils/get-jsx-element-name-at-position'
 import { openCssFileAndScrollToClass } from './utils/open-css-file'
@@ -47,10 +51,14 @@ const { activate, deactivate } = defineExtension(() => {
     // Create AST once
     const documentText = document.getText()
     const offset = document.offsetAt(position)
-    const sourceFile = createDefaultSourceFile(document.fileName, documentText)
+    const ast = TypeScriptParser.parse(documentText, {
+      ecmaVersion: 'latest' as any,
+      sourceType: 'module',
+      locations: true
+    }) as Node
 
-    // Get element name first if needed
-    const elementName = getJsxElementNameAtPosition(sourceFile, offset)
+    // Get element name first if needed  
+    const elementName = getJsxElementNameAtPosition(ast, offset)
     if (!elementName) {
       window.showErrorMessage('No JSX element found at cursor position')
       return
@@ -89,7 +97,8 @@ const { activate, deactivate } = defineExtension(() => {
 
     // Transform the AST
     const transformResult = transformJsxStyleToClassName({
-      sourceFile,
+      ast,
+      sourceCode: documentText,
       offset,
       className,
       classAttribute,
