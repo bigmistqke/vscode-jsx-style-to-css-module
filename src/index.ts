@@ -3,12 +3,12 @@ import * as path from 'node:path'
 import { defineExtension, useCommand } from 'reactive-vscode'
 import * as vscode from 'vscode'
 import { window, workspace, WorkspaceEdit } from 'vscode'
-import { generateUniqueClassName, stylesToCSS } from './utils/style-helpers'
 import { createDefaultSourceFile } from '../src/utils/create-default-source-file'
-import { transformJsxStyleToClassName } from './utils/transform-jsx-style-to-class-name'
+import { classExists } from './utils/css-parser'
 import { getJsxElementNameAtPosition } from './utils/get-jsx-element-name-at-position'
 import { openCssFileAndScrollToClass } from './utils/open-css-file'
-import { classExists } from './utils/css-parser'
+import { generateUniqueClassName, stylesToCSS } from './utils/style-helpers'
+import { transformJsxStyleToClassName } from './utils/transform-jsx-style-to-class-name'
 
 const { activate, deactivate } = defineExtension(() => {
   // Helper to get configuration values
@@ -28,9 +28,9 @@ const { activate, deactivate } = defineExtension(() => {
     const position = editor.selection.active
 
     // Get configuration
-    const classAttribute = getConfig<'className' | 'class'>('classAttribute') || 'className'
-    const cssPropertyNaming =
-      getConfig<'kebab-case' | 'camelCase'>('cssPropertyNaming') || 'kebab-case'
+    const classAttribute = getConfig<'className' | 'class'>('classAttribute') ?? 'class'
+    const cssPropertyNaming
+      = getConfig<'kebab-case' | 'camelCase'>('cssPropertyNaming') ?? 'kebab-case'
 
     // Get file paths
     const filePath = document.fileName
@@ -62,7 +62,7 @@ const { activate, deactivate } = defineExtension(() => {
     const maxAttempts = 10
 
     while (attempts < maxAttempts) {
-      const promptMessage = attempts === 0 
+      const promptMessage = attempts === 0
         ? 'Enter class name:'
         : `Class "${className}" already exists. Try a different name:`
 
